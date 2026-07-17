@@ -1,0 +1,8 @@
+# streamlit: 1.40 is the floor for st.segmented_control.
+streamlit>=1.40.0
+requests>=2.32.0
+# >=0.116: older SDKs don't accept output_config / adaptive thinking.
+anthropic>=0.116.0
+# Live last-trade prices only -- no bars, no resampling. See quotes.py.
+alpaca-py>=0.21.0
+python-dotenv>=1.0.0
