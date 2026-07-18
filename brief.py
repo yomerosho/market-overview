@@ -24,10 +24,13 @@ shape. If that file's schema changes, `_trim_level` is where it breaks, loudly.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Iterator, Optional
 
 import requests
+
+logger = logging.getLogger("market_brief")
 
 SCAN_URL = (
     "https://raw.githubusercontent.com/yomerosho/strat-alerts/main/latest_scan.json"
@@ -291,6 +294,112 @@ def _near_miss_summary(near: list[dict]) -> dict:
     }
 
 
+# The Strat label of the last CLOSED daily bar, turned into a headline badge.
+# Deterministic on purpose: the badge is a claim about structure, and structure
+# is something the scan states outright rather than something to be interpreted.
+_STATUS = {
+    "2U": ("TRENDING UP", "bull"),
+    "2D": ("TRENDING DOWN", "bear"),
+    "1": ("INSIDE · COILED", "flat"),
+    "3": ("OUTSIDE · BROAD", "flat"),
+}
+
+
+def index_cards(facts: dict, snaps: dict) -> list[dict]:
+    """
+    One card per index, built entirely from data -- no model involved.
+
+    Everything a reader takes as fact (price, percent change, the badge, the
+    levels) is computed here. The model is handed these same cards and asked
+    only for a paragraph of read per symbol, which is merged in later. That way
+    a wrong number is impossible by construction rather than by good behaviour,
+    and the audits only ever have to police prose.
+    """
+    cards = []
+    for c in facts.get("index_context", []):
+        sym = c["symbol"]
+        snap = snaps.get(sym, {})
+        daily = c["frames"].get("1D", {})
+        four = c["frames"].get("4H", {})
+
+        label = daily.get("last_closed_label")
+        status, tone = _STATUS.get(label, ("UNRESOLVED", "flat"))
+        # An inside bar on the nominating frame is the coil that matters, even
+        # when the daily itself printed a direction.
+        if four.get("prior_bar_was_inside") and label not in ("1",):
+            status, tone = f"{status} · 4H COILED", tone
+
+        key = []
+        if daily.get("prior_high") is not None:
+            key.append(f"PDH {daily['prior_high']:.2f}")
+        if daily.get("prior_low") is not None:
+            key.append(f"PDL {daily['prior_low']:.2f}")
+        if daily.get("sets_up"):
+            key.append(f"{daily['sets_up']} @ {daily['f2_trigger']:.2f}")
+
+        cards.append({
+            "symbol": sym,
+            "price": snap.get("price", c.get("price")),
+            "change_pct": snap.get("change_pct"),
+            "status": status,
+            "tone": tone,
+            "r1": daily.get("prior_high"),
+            "s1": daily.get("prior_low"),
+            "key_levels": " / ".join(key),
+            "opens_as": daily.get("opens_as"),
+            "sets_up": daily.get("sets_up"),
+            "magnets_above": c.get("magnets_above", []),
+            "magnets_below": c.get("magnets_below", []),
+            "day_high": snap.get("day_high"),
+            "day_low": snap.get("day_low"),
+            "prev_close": snap.get("prev_close"),
+        })
+    return cards
+
+
+def setup_cards(facts: dict, snaps: dict) -> list[dict]:
+    """
+    One card per tradeable setup -- armed levels when the board has any,
+    otherwise the near misses, which is what makes a quiet board legible.
+
+    Armed and rejected are kept visually distinct by `kind`, because conflating
+    them is the one mistake that could cost money.
+    """
+    cards = []
+    for l in facts.get("armed_levels", []):
+        snap = snaps.get(l["symbol"], {})
+        cards.append({
+            "kind": "armed",
+            "symbol": l["symbol"],
+            "price": l.get("live_price") or snap.get("price") or l.get("price_at_scan"),
+            "change_pct": snap.get("change_pct"),
+            "badges": [l["tier"].replace("TIER", "TIER "), f"{l['setup_tf']} {l['pattern']}",
+                       l["direction"].upper()],
+            "tone": "bull" if l["direction"] == "bull" else "bear",
+            "trigger": l.get("trigger"), "stop": l.get("stop"),
+            "scale": l.get("scale_level"), "target": l.get("runner_target"),
+            "score": l.get("score"), "runway_r": l.get("runway_r"),
+            "distance_pct": l.get("live_distance_pct", l.get("distance_pct_at_scan")),
+        })
+    for n in facts.get("near_misses", []):
+        snap = snaps.get(n["symbol"], {})
+        gate = (n["failed_gates"] or ["?"])[0]
+        why = "no runway" if gate == "gate2" else ("continuity veto" if gate == "gate3" else gate)
+        cards.append({
+            "kind": "rejected",
+            "symbol": n["symbol"],
+            "price": n.get("live_price") or snap.get("price"),
+            "change_pct": snap.get("change_pct"),
+            "badges": [f"{n['setup_tf']} {n['pattern']}", n["direction"].upper(), f"REJECTED · {why}"],
+            "tone": "muted",
+            "trigger": n.get("trigger"),
+            "runway_r": n.get("runway_r"), "runway_required": n.get("runway_required"),
+            "fraction_of_gate_met": n.get("fraction_of_gate_met"),
+            "reasons": n.get("reasons"),
+        })
+    return cards
+
+
 def gather(scan: dict, live: dict, now_et: str, include_near_misses: bool = False) -> dict:
     """
     Assemble the fact sheet. Pure data -- no model, no prose.
@@ -483,6 +592,188 @@ def _user_prompt(facts: dict, session: str) -> str:
         f"FACTS (this is everything you know):\n"
         f"```json\n{json.dumps(facts, indent=2, default=str)}\n```"
     )
+
+
+MACRO_SYSTEM = """You are a markets desk analyst pulling the macro backdrop for \
+one trader's pre-session brief.
+
+You have web search. USE IT -- every factual claim here must come from a search \
+result you actually retrieved in this turn, never from memory. Your training \
+data is stale by definition and a stale headline presented as today's news is \
+the worst thing you could put on a trading page.
+
+Return 3-5 drivers, each as:
+  TITLE: a short headline, under 60 characters
+  BODY: two sentences of what happened and why it matters to equities today
+  IMPACT: high | medium | low
+
+Then a line beginning "CALENDAR:" listing today's scheduled US economic \
+releases with times in ET, or "CALENDAR: none found" if search doesn't surface \
+any. Do not reconstruct a calendar from memory.
+
+Rules. If search returns nothing usable for a topic, say so and drop it rather \
+than filling the space. Prefer the last 24-48 hours. Give numbers only when the \
+source states them. Do not give trading advice, price targets, or predictions.
+
+OUTPUT ONLY THE DRIVERS AND THE CALENDAR LINE. This text is rendered straight \
+onto a page, so no preamble, no narration of your searching, no "let me look \
+that up", no notes about which queries worked, no closing commentary. Start at \
+the first TITLE:. If the market is closed, one short italic line saying so and \
+which session the drivers describe is fine before the first TITLE."""
+
+
+def write_macro(now_et: str, api_key: str) -> tuple[str, list[str]]:
+    """
+    The macro backdrop, from real web search. Returns (text, source_urls).
+
+    This is the one part of the brief that isn't derived from the scan, and so
+    the one part that could be invented. Hence actual search rather than recall:
+    the model is required to retrieve before it asserts, and the sources come
+    back with the text so a claim can be checked.
+    """
+    import anthropic
+
+    client = anthropic.Anthropic(api_key=api_key)
+    resp = client.messages.create(
+        model=MODEL,
+        max_tokens=4000,
+        system=MACRO_SYSTEM,
+        # Each search is a real round trip, and the model will happily spend
+        # every use it's given -- at 10 this call ran past five minutes, which
+        # is not a button anyone presses twice. 5 is enough for a few parallel
+        # queries and keeps the call inside a minute or so.
+        tools=[{"type": "web_search_20260209", "name": "web_search", "max_uses": 5}],
+        # Macro is summarising retrieved text, not reasoning hard about it.
+        output_config={"effort": "low"},
+        messages=[{
+            "role": "user",
+            "content": (
+                f"It is {now_et}. Search for what is moving US equities right now: "
+                f"the main market-driving stories, and today's US economic calendar. "
+                f"Then write the drivers in the format given."
+            ),
+        }],
+    )
+
+    parts, sources = [], []
+    for block in resp.content:
+        if block.type == "text":
+            parts.append(block.text)
+        elif block.type == "web_search_tool_result":
+            content = getattr(block, "content", None)
+            # On failure `content` is a single error object, not a list.
+            if isinstance(content, list):
+                for r in content:
+                    url = getattr(r, "url", None)
+                    if url and url not in sources:
+                        sources.append(url)
+    return "".join(parts).strip(), sources
+
+
+READS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "market_condition": {
+            "type": "string",
+            "description": "2-4 sentences on the state of the tape overall.",
+        },
+        "condition_label": {
+            "type": "string",
+            "description": "2-4 word label, e.g. 'Compressed · Rangebound'.",
+        },
+        "reads": {
+            "type": "array",
+            "description": "One entry per symbol given, same symbols, no others.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string"},
+                    "read": {
+                        "type": "string",
+                        "description": "2-3 sentences on this symbol's structure "
+                                       "and what would change it.",
+                    },
+                },
+                "required": ["symbol", "read"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["market_condition", "condition_label", "reads"],
+    "additionalProperties": False,
+}
+
+
+def write_reads(facts: dict, cards: list[dict], setups: list[dict], api_key: str) -> dict:
+    """
+    Per-symbol narrative, as structured JSON keyed by symbol.
+
+    The model writes ONLY prose here. Every number the page displays was already
+    computed in index_cards/setup_cards; this fills the paragraph next to them.
+    Structured output means the app can place each read against the right card
+    instead of parsing a wall of text and hoping the order held.
+    """
+    import anthropic
+
+    client = anthropic.Anthropic(api_key=api_key)
+    payload = {
+        "now_et": facts.get("now_et"),
+        "gates": facts.get("gates"),
+        "index_cards": cards,
+        "setups": setups[:24],
+        "near_miss_summary": facts.get("near_miss_summary"),
+    }
+    resp = client.messages.create(
+        model=MODEL,
+        max_tokens=8000,
+        thinking={"type": "adaptive"},
+        output_config={"effort": "medium", "format": {"type": "json_schema", "schema": READS_SCHEMA}},
+        system=SYSTEM + (
+            "\n\nYOU ARE WRITING CARD TEXT, NOT A BRIEF. Return one read per "
+            "symbol in index_cards, using exactly those symbols. Each read is "
+            "2-3 sentences on what that symbol's structure means and what would "
+            "change it. The card already displays price, percent change, the "
+            "status badge and the levels -- do not restate them mechanically; "
+            "add what the numbers don't say. Never state a number that isn't in "
+            "the payload."
+        ),
+        messages=[{"role": "user", "content":
+                   f"```json\n{json.dumps(payload, indent=1, default=str)}\n```"}],
+    )
+    text = next((b.text for b in resp.content if b.type == "text"), "{}")
+    return json.loads(text)
+
+
+def build(facts: dict, cards: list[dict], setups: list[dict], api_key: str) -> dict:
+    """
+    Run the macro search and the reads at the same time.
+
+    They share no inputs -- macro reads the web, reads reads the scan -- so
+    running them in sequence just added one call's latency to the other's. The
+    macro call is the slow one (each web search is a real round trip), so
+    overlapping them makes the button roughly as slow as the search alone
+    instead of search plus reads.
+
+    A failure in either is contained: the page drops that section and renders
+    the rest, because a brief missing its macro panel is still worth reading.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    out = {"macro": "", "sources": [], "reads": {}}
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        f_macro = pool.submit(write_macro, facts.get("now_et", ""), api_key)
+        f_reads = pool.submit(write_reads, facts, cards, setups, api_key)
+        try:
+            out["macro"], out["sources"] = f_macro.result()
+        except Exception as e:
+            logger.warning("macro search failed: %s", e)
+            out["macro_error"] = str(e)
+        try:
+            out["reads"] = f_reads.result()
+        except Exception as e:
+            logger.warning("reads failed: %s", e)
+            out["reads_error"] = str(e)
+    return out
 
 
 def write(facts: dict, session: str, api_key: str) -> Iterator[str]:

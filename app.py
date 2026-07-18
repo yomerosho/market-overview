@@ -26,6 +26,7 @@ import streamlit as st
 
 import brief
 import quotes
+import render
 
 # Load .env before anything reads os.getenv. Without this the file is inert and
 # the app reports "no key" while a perfectly good .env sits next to it.
@@ -298,33 +299,52 @@ elif not facts["live_prices_used"]:
 
 go = st.button(f"⚡ Generate {session} Brief", disabled=not anthropic_key)
 
-# Keyed by session, so switching Morning/Afternoon never shows you the other
-# one's brief under the wrong heading.
-slot = f"brief_text_{session_key}"
-MARKER = '<span class="brief-body"></span>'  # what the CSS above scopes to
+# Cached per session so switching tabs doesn't discard a brief you paid for.
+slot = f"brief_{session_key}"
 
 if go:
-    with st.container(border=True):
-        st.markdown(MARKER, unsafe_allow_html=True)
-        try:
-            st.session_state[slot] = st.write_stream(
-                brief.write(facts, session_key, anthropic_key)
+    try:
+        with st.status("Building the brief…", expanded=False) as status:
+            status.update(label="Pulling VIX and daily context…")
+            vix = quotes.vix()
+            snaps = quotes.snapshots(
+                sorted({c["symbol"] for c in facts["index_context"]}
+                       | {l["symbol"] for l in facts.get("armed_levels", [])}
+                       | {n["symbol"] for n in facts.get("near_misses", [])}),
+                _secret("ALPACA_API_KEY"), _secret("ALPACA_SECRET_KEY"),
+                _secret("ALPACA_DATA_FEED", "iex"),
             )
-        except Exception as e:
-            st.session_state.pop(slot, None)
-            st.error(f"Claude didn't answer: {e}")
-elif st.session_state.get(slot):
-    with st.container(border=True):
-        st.markdown(MARKER, unsafe_allow_html=True)
-        st.markdown(st.session_state[slot])
+            cards = brief.index_cards(facts, snaps)
+            setups = brief.setup_cards(facts, snaps)
+
+            # Macro (web search) and reads (the scan) share no inputs, so they
+            # run together -- the button is then about as slow as the search
+            # alone rather than search plus reads.
+            status.update(label="Searching the web and writing the reads…")
+            built = brief.build(facts, cards, setups, anthropic_key)
+            status.update(label="Done", state="complete")
+
+        st.session_state[slot] = {
+            "vix": vix, "cards": cards, "setups": setups,
+            "macro": built.get("macro", ""), "sources": built.get("sources", []),
+            "reads": built.get("reads", {}),
+            "errors": {k: v for k, v in built.items() if k.endswith("_error")},
+        }
+    except Exception as e:
+        st.session_state.pop(slot, None)
+        st.error(f"Couldn't build the brief: {e}")
+
+data = st.session_state.get(slot)
+if data:
+    render.brief(data, session)
 else:
     st.markdown('<div class="empty">Pick a session, then hit generate</div>',
                 unsafe_allow_html=True)
 
 st.caption(
-    f"Written by {brief.MODEL} from the facts below and nothing else — no news "
-    f"feed, no data beyond the scan and last-trade prices. Levels and tiers are "
-    f"the scanner's; prices are live; the prose is the model's. Not advice."
+    f"Levels, prices and percentages are computed from the scan and Alpaca — "
+    f"never written by the model. Macro drivers come from live web search with "
+    f"sources listed. Reads are written by {brief.MODEL}. Not advice."
 )
 
 with st.expander("The exact facts Claude was given"):

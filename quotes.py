@@ -27,9 +27,98 @@ worse than no brief.
 from __future__ import annotations
 
 import logging
-from typing import Iterable
+from typing import Iterable, Optional
+
+import requests
 
 logger = logging.getLogger("market_brief.quotes")
+
+# Yahoo's chart endpoint. Unofficial and unsupported, but free, keyless, and the
+# only reachable source for the VIX itself: Alpaca serves equities, and the VIX
+# is an index, so it has no trade tape to quote (VIXY and UVXY are ETFs that
+# TRACK volatility -- they are not the VIX and must never be labelled as it).
+_VIX_URL = "https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=5d"
+
+
+def vix() -> Optional[dict]:
+    """
+    {"level": float, "prev_close": float, "change_pct": float} or None.
+
+    None on any failure, and the caller simply omits the volatility card. An
+    unofficial endpoint WILL break eventually; when it does the brief should
+    lose one panel, not fall over.
+    """
+    try:
+        r = requests.get(_VIX_URL, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+        r.raise_for_status()
+        m = r.json()["chart"]["result"][0]["meta"]
+        level = float(m["regularMarketPrice"])
+        prev = m.get("chartPreviousClose") or m.get("previousClose")
+        prev = float(prev) if prev else None
+    except Exception:
+        logger.warning("VIX lookup failed; omitting the volatility panel.", exc_info=True)
+        return None
+
+    return {
+        "level": round(level, 2),
+        "prev_close": round(prev, 2) if prev else None,
+        "change_pct": round((level - prev) / prev * 100, 2) if prev else None,
+    }
+
+
+def snapshots(
+    symbols: Iterable[str],
+    api_key: str,
+    secret_key: str,
+    data_feed: str = "iex",
+) -> dict[str, dict]:
+    """
+    Per-symbol daily context: last price, session OHLC, prior close, and the
+    day's percent change.
+
+    latest_prices() answers "what is it trading at". This answers "what has it
+    done today", which is what a card headline needs -- the -0.99% next to the
+    price. Alpaca returns both the current and previous daily bar in one call,
+    so the change is computed from real closes rather than inferred.
+    """
+    symbols = [s.upper() for s in symbols]
+    if not symbols or not (api_key and secret_key):
+        return {}
+    try:
+        from alpaca.data.enums import DataFeed
+        from alpaca.data.historical import StockHistoricalDataClient
+        from alpaca.data.requests import StockSnapshotRequest
+    except ImportError:
+        logger.warning("alpaca-py isn't installed; no daily context.")
+        return {}
+
+    feed = {"iex": DataFeed.IEX, "sip": DataFeed.SIP}.get(data_feed.lower(), DataFeed.IEX)
+    try:
+        client = StockHistoricalDataClient(api_key, secret_key)
+        res = client.get_stock_snapshot(
+            StockSnapshotRequest(symbol_or_symbols=symbols, feed=feed)
+        )
+    except Exception:
+        logger.exception("Snapshot request failed; no daily context.")
+        return {}
+
+    out: dict[str, dict] = {}
+    for sym, snap in (res or {}).items():
+        try:
+            day, prev = snap.daily_bar, snap.previous_daily_bar
+            last = snap.latest_trade.price if snap.latest_trade else day.close
+            chg = ((last - prev.close) / prev.close * 100) if prev and prev.close else None
+            out[sym] = {
+                "price": round(float(last), 2),
+                "change_pct": round(float(chg), 2) if chg is not None else None,
+                "day_open": round(float(day.open), 2),
+                "day_high": round(float(day.high), 2),
+                "day_low": round(float(day.low), 2),
+                "prev_close": round(float(prev.close), 2) if prev else None,
+            }
+        except Exception:
+            continue
+    return out
 
 
 def latest_prices(
