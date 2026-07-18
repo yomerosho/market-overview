@@ -256,12 +256,27 @@ st.markdown(f"""
     <span class="v {'amber' if n1 else 'zero'}">{n1}</span></span>
   <span class="f"><span class="k">Tier 2 · 15m</span>
     <span class="v {'teal' if n2 else 'zero'}">{n2}</span></span>
+  <span class="f"><span class="k">Context</span>
+    <span class="v {'' if facts['index_context'] else 'zero'}">{len(facts['index_context'])}/{len(brief.CONTEXT_SYMBOLS)}</span></span>
   <span class="f"><span class="k">Prices</span>
     <span class="v {'' if facts['live_prices_used'] else 'zero'}">
       {'LIVE' if facts['live_prices_used'] else 'SCAN'}</span></span>
   <span class="f"><span class="k">Last scan</span><span class="v">{scan_at[-5:] or '—'}</span></span>
 </div>
 """, unsafe_allow_html=True)
+
+# The scan carries a per-symbol block with each frame's last closed bar; that is
+# the entire source of index context. It comes back empty when the scanner's run
+# failed to fetch (its process_symbol swallows the exception and emits nothing),
+# and the result is a brief with no structure to talk about. Say so, rather than
+# letting a thin brief look like a quiet market.
+if not facts["index_context"]:
+    st.warning(
+        f"No index context — the last scan published no per-symbol data, so "
+        f"there are no prior 4H/Daily extremes for "
+        f"{'/'.join(brief.CONTEXT_SYMBOLS)}. The brief will be thin. Check that "
+        f"the scanner's last run actually fetched bars."
+    )
 
 if not anthropic_key:
     st.error("No ANTHROPIC_API_KEY — the brief can't be written.")
