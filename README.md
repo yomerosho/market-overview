@@ -1,6 +1,7 @@
 # Market Brief
 
-Obi's Trading Desk — the write-up.
+Obi's Trading Desk — the write-up. (The repo is `market-overview`; the page
+itself is the Market Brief.)
 
 The [strat-alerts](https://github.com/yomerosho/strat-alerts) board tells you
 **what** is armed. This tells you what it **means**: pick a session, hit
