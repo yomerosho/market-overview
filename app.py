@@ -1,7 +1,7 @@
 """
 app.py
 ------
-Obi's Trading Desk -- Market Brief.
+Market Brief.
 
 A single page: pick a session, hit generate, read what the scanner's board
 actually means. The board itself lives in the strat-alerts app; this is the
@@ -65,10 +65,6 @@ html, body, [class*="css"] { font-family:'Inter Tight',system-ui,sans-serif; }
 
 [data-testid="stMarkdownContainer"] h1 { color:var(--text) !important; font-weight:800;
   letter-spacing:-.03em; font-size:2.3rem; margin-bottom:.2rem; }
-
-.kicker { font-family:'IBM Plex Mono',monospace; font-size:.7rem !important;
-          font-weight:700; letter-spacing:.22em; text-transform:uppercase;
-          color:var(--teal) !important; margin-bottom:.1rem; }
 
 /* The generated brief. Roomier type on purpose: this is the one thing here you
    READ rather than scan, so it should not look like another data panel. */
@@ -169,7 +165,6 @@ def gate() -> bool:
     if st.session_state.get("unlocked"):
         return True
 
-    st.markdown('<div class="kicker">Obi\'s Trading Desk</div>', unsafe_allow_html=True)
     st.markdown("# Market Brief")
     pwd = st.text_input("Password", type="password", label_visibility="collapsed",
                         placeholder="Password")
@@ -217,7 +212,6 @@ def build_facts(bucket: int) -> dict:
 # page
 # --------------------------------------------------------------------------
 
-st.markdown('<div class="kicker">Obi\'s Trading Desk</div>', unsafe_allow_html=True)
 st.markdown("# Market Brief")
 
 anthropic_key = _secret("ANTHROPIC_API_KEY")
