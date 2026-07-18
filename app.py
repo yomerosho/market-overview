@@ -26,6 +26,17 @@ import streamlit as st
 import brief
 import quotes
 
+# Load .env before anything reads os.getenv. Without this the file is inert and
+# the app reports "no key" while a perfectly good .env sits next to it.
+# Deployed (Streamlit Cloud) there is no .env and this is a no-op -- _secret()
+# reads st.secrets first there anyway.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:  # optional dependency; st.secrets / real env still work
+    pass
+
 ET = ZoneInfo("America/New_York")
 
 st.set_page_config(page_title="Market Brief", page_icon="📄", layout="centered")
