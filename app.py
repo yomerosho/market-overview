@@ -187,17 +187,26 @@ if not gate():
 
 
 @st.cache_data(ttl=60, show_spinner=False)
-def build_facts(bucket: int) -> dict:
+def build_facts(bucket: int, near_misses: bool) -> dict:
     """
     `bucket` is the minute this call falls in. It exists purely to key the
     cache, so mashing Generate doesn't re-fetch on every click -- but a minute is
     short enough that prices stay meaningfully live.
+
+    `near_misses` is part of the cache key, so switching to Study rebuilds
+    rather than serving the live brief's slimmer fact sheet.
     """
     scan = brief.load_scan(int(time.time()), _secret("SCAN_URL", brief.SCAN_URL))
 
     wanted = set(brief.CONTEXT_SYMBOLS) | {
         l.get("symbol") for l in scan.get("armed_levels", []) if l.get("symbol")
     }
+    if near_misses:
+        # Study quotes the rejected patterns too, so their symbols need prices.
+        wanted |= {
+            s["symbol"] for s in scan.get("symbols", [])
+            if s.get("symbol") and s.get("rejected")
+        }
     live = quotes.latest_prices(
         sorted(wanted),
         _secret("ALPACA_API_KEY"),
@@ -205,7 +214,7 @@ def build_facts(bucket: int) -> dict:
         _secret("ALPACA_DATA_FEED", "iex"),
     )
     now_et = datetime.now(ET).strftime("%Y-%m-%d %H:%M ET (%A)")
-    return brief.gather(scan, live, now_et)
+    return brief.gather(scan, live, now_et, include_near_misses=near_misses)
 
 
 # --------------------------------------------------------------------------
@@ -223,14 +232,16 @@ if not _secret("APP_PASSWORD"):
     st.caption("⚠️ No APP_PASSWORD set — if this is deployed, anyone with the "
                "URL can generate briefs on your Anthropic key.")
 
+# Morning and Afternoon are session-time briefs. Study is intent -- read the
+# board with the market shut, including what the scanner REJECTED and why.
 session = st.segmented_control(
-    "Session", ["Morning", "Afternoon"], default="Morning",
+    "Session", ["Morning", "Afternoon", "Study"], default="Morning",
     label_visibility="collapsed",
 ) or "Morning"
 session_key = session.lower()
 
 try:
-    facts = build_facts(int(time.time() // 60))
+    facts = build_facts(int(time.time() // 60), session_key == "study")
 except Exception as e:
     st.error(f"Couldn't load the scan: {e}")
     st.caption("This app reads latest_scan.json published by the strat-alerts "
@@ -250,6 +261,9 @@ st.markdown(f"""
     <span class="v {'amber' if n1 else 'zero'}">{n1}</span></span>
   <span class="f"><span class="k">Tier 2 · 15m</span>
     <span class="v {'teal' if n2 else 'zero'}">{n2}</span></span>
+  {f'''<span class="f"><span class="k">Near miss</span>
+    <span class="v {'amber' if facts.get('near_misses') else 'zero'}">{len(facts.get('near_misses', []))}</span></span>'''
+   if 'near_misses' in facts else ''}
   <span class="f"><span class="k">Context</span>
     <span class="v {'' if facts['index_context'] else 'zero'}">{len(facts['index_context'])}/{len(brief.CONTEXT_SYMBOLS)}</span></span>
   <span class="f"><span class="k">Prices</span>

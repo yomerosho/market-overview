@@ -24,6 +24,7 @@ shape. If that file's schema changes, `_trim_level` is where it breaks, loudly.
 from __future__ import annotations
 
 import json
+import re
 from typing import Iterator, Optional
 
 import requests
@@ -186,15 +187,126 @@ def _context(sym_state: dict, live: dict) -> dict:
     }
 
 
-def gather(scan: dict, live: dict, now_et: str) -> dict:
-    """Assemble the fact sheet. Pure data -- no model, no prose."""
+_RUNWAY_RE = re.compile(r"nearest gating rung ([\d.]+)R\s*<\s*([\d.]+)R")
+_FTFC_RE = re.compile(r"FTFC (\d+)/(\d+) aligned < (\d+)")
+
+
+def _near_misses(scan: dict, live: dict) -> list[dict]:
+    """
+    The patterns the scanner FOUND and then threw away, with the gate that
+    killed each one. Study material, not trade candidates.
+
+    The scanner records these under each symbol's `rejected` so its own reject
+    log can be interrogated -- "a silent scanner you cannot interrogate is
+    indistinguishable from a broken one". They carry far less than an armed
+    level: pattern, timeframe, direction, trigger, and the reason trail. There
+    is no stop, target, scale point or score, because the scanner stops
+    computing those the moment a gate fails. So a near miss can be described
+    and located, never planned.
+
+    Sorted by how close each came to passing, so the most instructive ones
+    ("missed the runway gate by 0.1R") lead.
+    """
+    out: list[dict] = []
+    for sym in scan.get("symbols", []):
+        symbol = sym.get("symbol")
+        for r in sym.get("rejected", []) or []:
+            reasons = r.get("reasons") or []
+            gates = sorted({str(x).split(":")[0].strip() for x in reasons})
+
+            runway_r = min_runway = ftfc_aligned = ftfc_needed = None
+            for x in reasons:
+                m = _RUNWAY_RE.search(str(x))
+                if m:
+                    runway_r, min_runway = float(m.group(1)), float(m.group(2))
+                m = _FTFC_RE.search(str(x))
+                if m:
+                    ftfc_aligned, ftfc_needed = int(m.group(1)), int(m.group(3))
+
+            # How near it came, as a fraction of what the gate demanded. Only
+            # the runway gate gives a clean scalar; FTFC is counts, not a ratio.
+            closeness = (runway_r / min_runway) if (runway_r and min_runway) else None
+
+            entry = {
+                "symbol": symbol,
+                "setup_tf": r.get("setup_tf"),
+                "pattern": r.get("pattern"),
+                "direction": r.get("direction"),
+                "trigger": r.get("level"),
+                "failed_gates": gates,
+                "reasons": reasons,
+                "runway_r": runway_r,
+                "runway_required": min_runway,
+                "ftfc_aligned": ftfc_aligned,
+                "ftfc_required": ftfc_needed,
+                "fraction_of_gate_met": round(closeness, 2) if closeness else None,
+            }
+            q = live.get(symbol)
+            if q and r.get("level"):
+                entry["live_price"] = q["price"]
+                entry["live_distance_pct"] = _signed_distance_pct(
+                    q["price"], r["level"], r.get("direction")
+                )
+            out.append(entry)
+
+    out.sort(key=lambda e: -(e["fraction_of_gate_met"] or 0))
+    return out
+
+
+def _near_miss_summary(near: list[dict]) -> dict:
+    """
+    Pre-counted aggregates over the near misses.
+
+    This exists because the model gets tallies wrong. Asked to characterise 48
+    rejections it wrote "only four setups failed on continuity ... plus RIVN in
+    both directions" -- there were five, and RIVN appeared once. No price was
+    invented; it simply counted in prose. Counting is the machine's job, so the
+    machine does it here and the model is left to say what it means.
+    """
+    by_gate: dict[str, int] = {}
+    by_symbol: dict[str, int] = {}
+    by_direction: dict[str, int] = {}
+    for e in near:
+        for g in e["failed_gates"]:
+            by_gate[g] = by_gate.get(g, 0) + 1
+        by_symbol[e["symbol"]] = by_symbol.get(e["symbol"], 0) + 1
+        if e.get("direction"):
+            by_direction[e["direction"]] = by_direction.get(e["direction"], 0) + 1
+
+    # Names rejected in BOTH directions -- the signature of a coiled range,
+    # where the same symbol offers a trigger long and short with no room either
+    # way. Worth naming explicitly so it isn't inferred by eye.
+    dirs: dict[str, set] = {}
+    for e in near:
+        dirs.setdefault(e["symbol"], set()).add(e.get("direction"))
+    both = sorted(s for s, d in dirs.items() if {"bull", "bear"} <= d)
+
+    return {
+        "total": len(near),
+        "by_failed_gate": dict(sorted(by_gate.items(), key=lambda kv: -kv[1])),
+        "by_direction": by_direction,
+        "symbols_rejected_both_directions": both,
+        "symbols_by_count": dict(sorted(by_symbol.items(), key=lambda kv: -kv[1])[:10]),
+        "closest_fraction_of_gate_met": near[0]["fraction_of_gate_met"] if near else None,
+    }
+
+
+def gather(scan: dict, live: dict, now_et: str, include_near_misses: bool = False) -> dict:
+    """
+    Assemble the fact sheet. Pure data -- no model, no prose.
+
+    `include_near_misses` is off for the live briefs on purpose. During a
+    session the rejected patterns are noise that competes with the levels that
+    actually qualified, and anything that makes a rejected level look tradeable
+    is worse than not showing it. Study mode turns it on.
+    """
     levels = [_trim_level(l, live) for l in scan.get("armed_levels", [])]
     levels.sort(key=lambda l: (-(l["score"] or 0), abs(l["distance_pct_at_scan"] or 99)))
 
     by_symbol = {s.get("symbol"): s for s in scan.get("symbols", [])}
     context = [_context(by_symbol[s], live) for s in CONTEXT_SYMBOLS if s in by_symbol]
 
-    return {
+    base = {
         "now_et": now_et,
         "scan_generated_et": scan.get("generated_at_et") or scan.get("generated_at_utc"),
         "scan_version": scan.get("version"),
@@ -209,6 +321,12 @@ def gather(scan: dict, live: dict, now_et: str) -> dict:
         "index_context": context,
         "live_prices_used": bool(live),
     }
+
+    if include_near_misses:
+        near = _near_misses(scan, live)
+        base["near_misses"] = near
+        base["near_miss_summary"] = _near_miss_summary(near)
+    return base
 
 
 # --------------------------------------------------------------------------
@@ -245,6 +363,23 @@ WHAT THE FACTS MEAN
   board -- respect it rather than re-ranking on your own instinct.
 - Everything in armed_levels ALREADY cleared the scanner's gates. Do not \
   re-litigate whether a level qualifies; it does. Your job is what it means.
+- near_misses (present only in the study brief) is the OPPOSITE: patterns the \
+  scanner found and then REJECTED. Each carries the gate that killed it, and \
+  the gates mean different things -- do not blur them:
+    gate2  = runway. The nearest untouched higher-timeframe rung is closer than \
+             min_runway_r, so there is no room to run before higher-timeframe \
+             magnitude is spent. (Or the ladder is empty: all of it spent.)
+    gate2a = the stop is so tight that risk is a negligible % of price.
+    gate3  = hard continuity: the named timeframe's FORMING bar is trading \
+             against the trade's direction. Not a count -- one frame vetoes.
+    gate3b = FTFC: fewer than min_ftfc of the watched frames agree.
+  The raw `reasons` strings are included; quote them when precision matters. \
+  These are teaching material, never trade candidates. They \
+  have no stop, target, scale point or score, because the scanner stops \
+  computing those the moment a gate fails, so you cannot lay out a plan for one \
+  and must not try. Never call a near miss armed, live, triggered, or \
+  actionable, and never tell the trader to watch one for an entry. \
+  fraction_of_gate_met is how close it came (0.95 = missed by 5%).
 - In index_context, `frames` gives each timeframe's last CLOSED bar: its high, \
   its low, and its Strat label. `opens_as` says what the next bar of that frame \
   opens as given where price sits against those extremes, and `sets_up` is the \
@@ -310,8 +445,39 @@ Cover, in this order:
 Skip the pre-open framing -- the session is underway."""
 
 
+STUDY = """Write the STUDY brief -- for reading the market with the session \
+closed, to understand the scanner rather than to trade.
+
+The board is likely empty or thin; that is the subject, not a problem. The \
+interesting question is WHY, and near_misses answers it: these are the patterns \
+the scanner found and rejected, each with the gate that killed it.
+
+Cover, in this order:
+1. One opening sentence: what the scanner saw and what it did with it -- how \
+   many patterns it found versus how many survived the gates.
+2. The closest calls. Lead with the highest fraction_of_gate_met: a 2-1-2 that \
+   missed the runway gate by a tenth of an R is the most instructive thing on \
+   the page. Name the pattern, the timeframe, the trigger, and exactly what it \
+   lacked.
+3. The pattern in the rejections. Are they nearly all gate2 (no room to run \
+   before higher-timeframe magnitude is spent) or gate3 (a higher timeframe's \
+   forming bar vetoes the direction)? Say which, and what that says about the \
+   tape right now -- a board full of runway rejections is a compressed, \
+   rangebound market; one full of continuity rejections is a market at odds \
+   with itself. Names appearing in BOTH directions are the signature of a coil.
+
+   USE near_miss_summary FOR EVERY COUNT. It has the totals per gate, per \
+   direction, and the list of symbols rejected both ways, already tallied. Do \
+   not count entries yourself and do not estimate -- quote those numbers.
+4. Index structure worth carrying into the next session.
+
+These did NOT qualify. Describe them as rejected setups being studied, never as \
+levels to watch or trade. Do not give entries, stops or targets for them -- the \
+scanner never computed those."""
+
+
 def _user_prompt(facts: dict, session: str) -> str:
-    instructions = MORNING if session == "morning" else AFTERNOON
+    instructions = {"morning": MORNING, "afternoon": AFTERNOON}.get(session, STUDY)
     return (
         f"{instructions}\n\n"
         f"FACTS (this is everything you know):\n"
