@@ -78,11 +78,30 @@ Only `ANTHROPIC_API_KEY` is required. Without Alpaca keys the brief still runs
 off the scan's own prices and says so; without a Claude key the facts still load
 and only the write-up is disabled.
 
-### Deploying
+### Deploying to Streamlit Cloud
 
-Streamlit Cloud: point it at `app.py` and put the same names from `env.example`
-into the app's Secrets. Nothing needs to run on a schedule — the scanner's
-GitHub Action already refreshes `latest_scan.json`.
+1. https://share.streamlit.io → **New app** → pick `yomerosho/market-overview`,
+   branch `main`, main file `app.py`.
+2. **Advanced settings → Secrets**, paste the contents of
+   [.streamlit/secrets.toml.example](.streamlit/secrets.toml.example) with your
+   real values. Same names as `.env`; `_secret()` reads `st.secrets` first, then
+   the environment.
+3. Deploy. Nothing needs to run on a schedule — the scanner's GitHub Action
+   already refreshes `latest_scan.json`, and this app reads it on each load.
+
+**Set `APP_PASSWORD` before you deploy.** A Streamlit Cloud app is reachable by
+anyone with the URL, and every Generate here is an Opus call billed to the key in
+your Secrets — unprotected, it's a stranger's free credit line. Setting
+`APP_PASSWORD` turns on the gate; leaving it unset keeps the app open (fine on
+localhost) and the page will nag you about it.
+
+Theme is pinned in [.streamlit/config.toml](.streamlit/config.toml). The page CSS
+is written for a dark ground, so without it a viewer defaulting to light theme
+gets light widgets on a dark page.
+
+`tzdata` is in `requirements.txt` deliberately: `app.py` builds
+`ZoneInfo("America/New_York")` at import, and on an image without a system tz
+database that raises `ZoneInfoNotFoundError` before anything renders.
 
 ## Not advice
 

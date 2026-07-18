@@ -1,0 +1,22 @@
+# Pin the theme. The page CSS is written for a dark ground -- it sets the app
+# background itself, but Streamlit's own widgets (the session toggle, the
+# expander, the JSON viewer) follow this theme. Without it, a viewer whose
+# Streamlit defaults to light gets light widgets on a dark page, which looks
+# broken rather than styled.
+#
+# This file is committed on purpose; only .streamlit/secrets.toml is ignored.
+
+[theme]
+base = "dark"
+primaryColor = "#4ecdc4"            # the brief's teal accent
+backgroundColor = "#0d1319"
+secondaryBackgroundColor = "#18212c"
+textColor = "#f1f6fb"
+font = "sans serif"
+
+[server]
+# Nothing here is user-uploaded, and the app takes no file input.
+maxUploadSize = 1
+
+[browser]
+gatherUsageStats = false

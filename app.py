@@ -16,6 +16,7 @@ model writes prose; it does not decide what is true. See brief.py.
 
 from __future__ import annotations
 
+import hmac
 import os
 import time
 from datetime import datetime
@@ -148,6 +149,48 @@ def _secret(name: str, default: str = "") -> str:
     return os.getenv(name, default)
 
 
+def gate() -> bool:
+    """
+    Optional password gate. Returns True when the page may render.
+
+    Why this exists: a deployed Streamlit app is reachable by anyone with the
+    URL, and this page has a button that spends real money on someone else's
+    behalf -- every Generate is an Opus call billed to the key in Secrets. An
+    unprotected deployment is a stranger's free credit line.
+
+    Opt-in by presence: set APP_PASSWORD and the gate turns on; leave it unset
+    and the app is open, which is what you want on localhost. If it's unset the
+    page nags, so an unprotected deployment announces itself instead of quietly
+    costing money.
+    """
+    expected = _secret("APP_PASSWORD")
+    if not expected:
+        return True                      # open; the caller renders the warning
+    if st.session_state.get("unlocked"):
+        return True
+
+    st.markdown('<div class="kicker">Obi\'s Trading Desk</div>', unsafe_allow_html=True)
+    st.markdown("# Market Brief")
+    pwd = st.text_input("Password", type="password", label_visibility="collapsed",
+                        placeholder="Password")
+    # The button exists to give people something to click. It doesn't gate the
+    # check -- Streamlit reruns on Enter too, and `pwd` survives either way, so
+    # the check below runs on whichever path the user took.
+    st.button("Unlock", type="primary")
+    if pwd:
+        # compare_digest so a wrong guess can't be timed character by character
+        if hmac.compare_digest(pwd, expected):
+            st.session_state["unlocked"] = True
+            st.rerun()
+        else:
+            st.error("Incorrect password.")
+    return False
+
+
+if not gate():
+    st.stop()
+
+
 @st.cache_data(ttl=60, show_spinner=False)
 def build_facts(bucket: int) -> dict:
     """
@@ -178,6 +221,13 @@ st.markdown('<div class="kicker">Obi\'s Trading Desk</div>', unsafe_allow_html=T
 st.markdown("# Market Brief")
 
 anthropic_key = _secret("ANTHROPIC_API_KEY")
+
+# Deployed and unprotected means anyone with the URL can spend the key in
+# Secrets. Harmless on localhost, so this is a nag rather than a block -- and it
+# disappears the moment APP_PASSWORD is set.
+if not _secret("APP_PASSWORD"):
+    st.caption("⚠️ No APP_PASSWORD set — if this is deployed, anyone with the "
+               "URL can generate briefs on your Anthropic key.")
 
 session = st.segmented_control(
     "Session", ["Morning", "Afternoon"], default="Morning",
