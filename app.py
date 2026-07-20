@@ -27,6 +27,7 @@ import streamlit as st
 import brief
 import quotes
 import render
+import store
 
 # Load .env before anything reads os.getenv. Without this the file is inert and
 # the app reports "no key" while a perfectly good .env sits next to it.
@@ -297,7 +298,46 @@ elif not facts["live_prices_used"]:
                "as old as the last scan. Set ALPACA_API_KEY / ALPACA_SECRET_KEY "
                "for live quotes.")
 
+# --- saved briefs -------------------------------------------------------
+# session_state is per browser session, so a brief generated at the desk is gone
+# on the phone an hour later. These archive to GitHub instead. Optional: with no
+# token the app behaves exactly as before, minus the picker.
+GH_TOKEN = _secret("GITHUB_TOKEN")
+GH_REPO = _secret("BRIEF_REPO", "yomerosho/market-overview")
+
+
+@st.cache_data(ttl=120, show_spinner=False)
+def history(_token: str, _repo: str) -> list[dict]:
+    """Cached so the picker doesn't hit the API on every widget interaction.
+    Leading underscores keep the token out of Streamlit's cache key display."""
+    return store.history(_token, _repo)
+
+
+if GH_TOKEN:
+    saved = history(GH_TOKEN, GH_REPO)
+    if saved:
+        labels = ["— current —"] + [s["label"] for s in saved]
+        pick = st.selectbox(f"Saved briefs ({len(saved)})", labels, index=0,
+                            label_visibility="collapsed")
+        if pick != "— current —":
+            chosen = next(s for s in saved if s["label"] == pick)
+            # Held in its own slot rather than the session slot. A saved brief
+            # belongs to the session it was GENERATED for, which needn't be the
+            # tab you're looking at -- filing a Study brief under brief_study
+            # while the toggle said Morning is what made the picker render
+            # nothing at all.
+            if (st.session_state.get("viewed") or {}).get("label") != chosen["label"]:
+                loaded = store.load(chosen["path"], GH_TOKEN, GH_REPO)
+                if loaded:
+                    st.session_state["viewed"] = {**chosen, "data": loaded}
+                else:
+                    st.warning("That saved brief couldn't be loaded.")
+        else:
+            st.session_state.pop("viewed", None)
+
 go = st.button(f"⚡ Generate {session} Brief", disabled=not anthropic_key)
+if go:
+    st.session_state.pop("viewed", None)   # generating leaves the archive view
 
 # Cached per session so switching tabs doesn't discard a brief you paid for.
 slot = f"brief_{session_key}"
@@ -324,18 +364,37 @@ if go:
             built = brief.build(facts, cards, setups, anthropic_key)
             status.update(label="Done", state="complete")
 
-        st.session_state[slot] = {
+        payload = {
             "vix": vix, "cards": cards, "setups": setups,
             "macro": built.get("macro", ""), "sources": built.get("sources", []),
             "reads": built.get("reads", {}),
             "errors": {k: v for k, v in built.items() if k.endswith("_error")},
+            "scan_generated_et": facts.get("scan_generated_et"),
         }
+        st.session_state[slot] = payload
+
+        # Archive it. A brief costs real money to produce and, until now, died
+        # with the browser tab -- so it is saved without being asked, and the
+        # save failing is never allowed to cost you the brief you just paid for.
+        saved_at = datetime.now(ET).strftime("%Y-%m-%dT%H%M")
+        path = store.save(payload, session_key, saved_at, GH_TOKEN, GH_REPO)
+        if path:
+            st.session_state["last_saved"] = path
+            history.clear()               # the picker must show the new entry
     except Exception as e:
         st.session_state.pop(slot, None)
         st.error(f"Couldn't build the brief: {e}")
 
-data = st.session_state.get(slot)
+# An archived brief wins over the live one while it's selected, so the page
+# shows what you asked for regardless of which session tab happens to be active.
+viewed = st.session_state.get("viewed")
+data = viewed["data"] if viewed else st.session_state.get(slot)
+
 if data:
+    if viewed:
+        st.info(f"📁 Saved brief — {viewed['label']}. "
+                f"Prices and levels are frozen as of then, not current. "
+                f"Choose “— current —” to come back.")
     render.brief(data, session)
 else:
     st.markdown('<div class="empty">Pick a session, then hit generate</div>',
