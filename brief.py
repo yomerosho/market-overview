@@ -638,11 +638,13 @@ def write_macro(now_et: str, api_key: str) -> tuple[str, list[str]]:
         model=MODEL,
         max_tokens=4000,
         system=MACRO_SYSTEM,
-        # Each search is a real round trip, and the model will happily spend
-        # every use it's given -- at 10 this call ran past five minutes, which
-        # is not a button anyone presses twice. 5 is enough for a few parallel
-        # queries and keeps the call inside a minute or so.
-        tools=[{"type": "web_search_20260209", "name": "web_search", "max_uses": 5}],
+        # Each search is a real round trip and the model spends whatever it's
+        # given, so this is a straight latency/reliability trade. At 10 the call
+        # ran past five minutes. At 5 it fires a parallel batch, burns the whole
+        # budget at once, and has nothing left to retry with -- when that batch
+        # comes back empty the turn ends with no drivers at all. 8 leaves room
+        # for one retry after a bad batch and still lands inside ~90s.
+        tools=[{"type": "web_search_20260209", "name": "web_search", "max_uses": 8}],
         # Macro is summarising retrieved text, not reasoning hard about it.
         output_config={"effort": "low"},
         messages=[{

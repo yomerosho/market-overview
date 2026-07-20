@@ -218,8 +218,20 @@ def _macro(text: str, sources: list[str]) -> None:
     st.markdown('<div class="sec">Macro drivers · from live web search</div>',
                 unsafe_allow_html=True)
     if not drivers:
-        st.markdown(f'<div class="card flat"><div class="read">{html.escape(text or "Nothing returned.")}</div></div>',
-                    unsafe_allow_html=True)
+        # Search can come back empty -- rate limits, a bad batch of queries, an
+        # outage. When it does the model refuses to write drivers from memory,
+        # which is the behaviour we want, but its explanation of why is not a
+        # panel anyone wants to read. Say what happened in one line instead. The
+        # section is still shown, so a missing backdrop is visible rather than
+        # silently absent.
+        st.markdown(
+            '<div class="card flat"><div class="read">'
+            'No macro drivers this run — web search returned nothing usable, and '
+            'the backdrop is deliberately not written from memory. The market '
+            'data on this page is unaffected; regenerate to try the search again.'
+            '</div></div>', unsafe_allow_html=True)
+        with st.expander("What the search step reported"):
+            st.caption(text or "Nothing returned.")
     for m in drivers:
         imp = m.group("i").lower()
         st.markdown(f"""
