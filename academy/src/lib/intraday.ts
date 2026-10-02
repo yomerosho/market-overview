@@ -27,6 +27,8 @@ export type IntradayChart = {
   boxes: Box[];
   /** Session VWAP from the open, one point per session bar. */
   vwap: { time: number; value: number }[];
+  /** 9 / 21 / 50 EMAs on the 5-minute bars, as on the author's chart. */
+  emas: { n: number; points: { time: number; value: number }[] }[];
   /** Bars revealed before the student decides. */
   reveal: number;
   expected: "long" | "short" | "skip";
@@ -45,6 +47,15 @@ export function generateIntraday(seed: number, scenario: IntradayScenario): Intr
   const closes: number[] = [];
   const vols: number[] = [];
   let price = 100 + (rnd() - 0.5) * 2;
+  // Hidden warm-up bars (yesterday's afternoon) so the EMAs, the 50 in
+  // particular, are real by the time the chart starts. Never displayed.
+  const WARMUP = 60;
+  const warm: number[] = [];
+  let w = price + (rnd() - 0.5) * 3;
+  for (let i = 0; i < WARMUP; i++) {
+    w += (price - w) * 0.08 + (rnd() - 0.5) * 0.5;
+    warm.push(w);
+  }
   for (let i = 0; i < PREMARKET_BARS; i++) {
     price += (rnd() - 0.5) * 0.5;
     price = Math.min(pdh - 0.8, Math.max(pdl + 0.8, price));
@@ -157,11 +168,23 @@ export function generateIntraday(seed: number, scenario: IntradayScenario): Intr
     vwap.push({ time: c.time, value: r(pv / v) });
   }
 
+  const emas = [9, 21, 50].map((n) => {
+    const k = 2 / (n + 1);
+    let e = warm[0];
+    for (const c of warm) e = c * k + e * (1 - k);
+    const points: { time: number; value: number }[] = [];
+    for (const c of candles) {
+      e = c.close * k + e * (1 - k);
+      points.push({ time: c.time, value: r(e) });
+    }
+    return { n, points };
+  });
+
   const expected = openDrive || cont ? (up ? "long" : "short") : reversal ? (up ? "short" : "long") : "skip";
   // Decide after the first candle (open drive), after the engulfing candle
   // (reversal), or after the first 5-min close following the ORB.
   const reveal = PREMARKET_BARS + (openDrive ? 1 : reversal ? ORB_BARS + 2 : ORB_BARS + 1);
-  return { candles, levels, boxes, vwap, reveal, expected };
+  return { candles, levels, boxes, vwap, emas, reveal, expected };
 }
 
 function r(n: number) {

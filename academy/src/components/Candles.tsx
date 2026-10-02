@@ -158,12 +158,13 @@ export default function Candles({
 
     for (const s of overlayRef.current) chart.removeSeries(s);
     overlayRef.current = (overlays ?? []).map((o) => {
+      // Lines are identified by the legend below the chart, not by axis
+      // labels, which crowd the price scale on a phone.
       const s = chart.addSeries(LineSeries, {
         color: o.color,
-        lineWidth: 2,
-        lastValueVisible: true,
+        lineWidth: o.label === "VWAP" ? 2 : 1,
+        lastValueVisible: false,
         priceLineVisible: false,
-        title: o.label,
       });
       s.setData(o.points.map((p) => ({ time: p.time as UTCTimestamp, value: p.value })));
       return s;
@@ -251,6 +252,16 @@ export default function Candles({
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
       />
+      {overlays && overlays.length > 0 && (
+        <div className="pointer-events-none absolute left-1 top-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] leading-none">
+          {overlays.map((o) => (
+            <span key={o.label} className="flex items-center gap-1 rounded bg-zinc-950/70 px-1 py-0.5 text-zinc-300">
+              <span className="inline-block h-0.5 w-3" style={{ background: o.color }} />
+              {o.label}
+            </span>
+          ))}
+        </div>
+      )}
       {boxRects.map(({ box, left, top, width, height: h }, i) => (
         <div
           key={i}

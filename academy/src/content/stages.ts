@@ -1444,9 +1444,22 @@ const l7_5b: Lesson = {
         "A weak break out of the ORB box is a setup of its own. Price pokes through on thin volume and can't hold.",
         "What you're waiting for is a 5-minute engulfing reversal candle: a candle in the opposite direction whose body swallows the poke candle's body, ideally on volume.",
         "Enter after that candle closes, not before. Target the opposite side of the ORB box.",
+        "Confluence makes the target better. If the 50 EMA (or VWAP, or a daily level) sits at the far side of the box, that's where the move is most likely to stall, and where you lock in.",
         "This is the mirror of the continuation trade. Same levels, same patience, opposite direction.",
       ],
       chart: { seed: 7551, structure: "range", scenario: "reversal-short" },
+    },
+    {
+      id: "t2",
+      type: "teach",
+      tag: "orb",
+      title: "A real one: IWM, early October",
+      body: [
+        "Gap-up open. The 15-minute ORB formed near the highs. Price barely poked above the top of the box, with no follow-through.",
+        "The next 5-minute candle was a bearish engulfing: it opened near the high and closed below the body of the poke candle. Entry on that close.",
+        "Target: the bottom of the ORB box, which was also where the 50 EMA was sitting. Price traded straight down into it. Profit locked at the confluence, done before 10:30.",
+        "Nothing fancy. Weak break, engulfing candle, opposite side of the box.",
+      ],
     },
     {
       id: "q1",

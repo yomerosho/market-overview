@@ -31,7 +31,10 @@ export function resolveChart(spec: ChartSpec): ResolvedChart {
       candles: g.candles,
       levels: spec.showLevels === false ? [] : g.levels,
       boxes: spec.showLevels === false ? [] : g.boxes,
-      overlays: [{ label: "VWAP", color: "#e5e7eb", points: g.vwap }],
+      overlays: [
+        { label: "VWAP", color: "#e5e7eb", points: g.vwap },
+        ...g.emas.map((e) => ({ label: `${e.n} EMA`, color: maColor(e.n), points: e.points })),
+      ],
       swingHighs: [],
       swingLows: [],
       intraday: true,
