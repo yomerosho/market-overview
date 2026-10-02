@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+:root {
+  --background: #09090b;
+  --foreground: #f4f4f5;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-primary {
+  @apply w-full rounded-xl bg-emerald-500 px-4 py-3 text-center text-base font-bold text-zinc-950 shadow-[0_4px_0_#15803d] active:translate-y-0.5 active:shadow-none disabled:opacity-40 disabled:shadow-none;
+}
+
+.btn-danger {
+  @apply w-full rounded-xl bg-red-500 px-4 py-3 text-center text-base font-bold text-zinc-950 shadow-[0_4px_0_#b91c1c] active:translate-y-0.5 active:shadow-none;
+}
