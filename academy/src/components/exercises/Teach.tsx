@@ -2,14 +2,14 @@
 
 import { useMemo } from "react";
 import ChartFor from "./ChartFor";
-import { generateChart } from "@/lib/chart-gen";
+import { resolveChart } from "@/lib/charts";
 import type { TeachExercise } from "@/lib/types";
 
 export default function Teach({ ex, onDone }: { ex: TeachExercise; onDone: () => void }) {
   // The swings lesson wants its example chart annotated.
   const markers = useMemo(() => {
     if (!ex.chart || ex.tag !== "trend") return undefined;
-    const g = generateChart(ex.chart);
+    const g = resolveChart(ex.chart);
     return g.swingLows.map((index) => ({ index, kind: "low" as const, color: "#60a5fa" }));
   }, [ex]);
 

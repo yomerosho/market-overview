@@ -1015,6 +1015,395 @@ const l5_5: Lesson = {
   ],
 };
 
+// ---------- Stage 7: 0DTE ----------
+// The author's own intraday method: a fixed morning routine, a bias from
+// the daily chart and moving averages, the day's key levels, and the
+// 15-minute opening range as the trigger.
+
+const l7_1: Lesson = {
+  id: "s7-routine",
+  title: "The morning routine",
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "routine",
+      title: "Before the open, every day, in this order",
+      body: [
+        "1. On the daily chart, draw today's support and resistance lines and any trendlines. These are the walls price has to deal with today.",
+        "2. Check where price sits relative to the 9, 21 and 50 moving averages, and the bigger 100 and 200. That, plus the daily structure, gives you a bias: bullish or bearish.",
+        "3. Check full timeframe continuity (FTFC): are the daily, 4-hour and 1-hour all pointing the same way? When they agree, you can trust the bias more and take further targets. When they don't, be more careful.",
+        "4. Draw the premarket high (PMH) and premarket low (PML).",
+        "5. At the open, mark yesterday's high and low (PDH, PDL). Now you have your map.",
+      ],
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "routine",
+      prompt: "Which chart do you draw today's support and resistance from?",
+      choices: ["The 1-minute", "The 5-minute", "The daily", "Whatever's open"],
+      answer: 2,
+      explain: "The daily chart. Big levels come from big timeframes; the intraday chart just shows you how price reacts to them.",
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "routine",
+      prompt: "The daily, 4-hour and 1-hour charts are all making higher highs and higher lows. That is:",
+      choices: ["A range", "Full timeframe continuity to the upside", "A reason to short", "Irrelevant for 0DTE"],
+      answer: 1,
+      explain: "All timeframes agree: FTFC bullish. Trust longs more and allow further targets.",
+    },
+    {
+      id: "q3",
+      type: "choice",
+      tag: "routine",
+      prompt: "You wake up late and the market opens in 2 minutes. You haven't drawn any levels. What do you do?",
+      choices: ["Trade the first candle, it's the best one", "Do the routine first; if you miss the open, you miss it", "Guess the levels from memory"],
+      answer: 1,
+      explain: "Never trade in a rush. No map, no trade. There's a 1pm window too.",
+    },
+  ],
+};
+
+const l7_2: Lesson = {
+  id: "s7-bias",
+  title: "Bias from the moving averages",
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "bias",
+      title: "Where is price relative to the averages?",
+      body: [
+        "The 9 and 21 MAs track the short-term trend. The 50 tracks the swing. The 100 and 200 are the big picture.",
+        "Price above the 9, the 9 above the 21, the 21 above the 50: stacked bullish. Lean long today. The mirror is stacked bearish: lean short.",
+        "Price tangled up in the averages with no clear order: no bias. That's a 'be careful' day; the ORB had better be very clean before you touch it.",
+      ],
+      chart: { seed: 7101, structure: "bull", bars: 120, mas: [9, 21, 50] },
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "bias",
+      prompt: "What's the bias on this chart?",
+      choices: ["Bullish", "Bearish", "No bias"],
+      answer: 0,
+      explain: "Price is above all three averages and they're stacked 9 over 21 over 50. Lean long.",
+      chart: { seed: 7101, structure: "bull", bars: 120, mas: [9, 21, 50] },
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "bias",
+      prompt: "What's the bias on this chart?",
+      choices: ["Bullish", "Bearish", "No bias"],
+      answer: 1,
+      explain: "Price under the averages, averages stacked downward. Lean short.",
+      chart: { seed: 7102, structure: "bear", bars: 120, mas: [9, 21, 50] },
+    },
+    {
+      id: "q3",
+      type: "choice",
+      tag: "bias",
+      prompt: "What's the bias on this chart?",
+      choices: ["Bullish", "Bearish", "No bias"],
+      answer: 2,
+      explain: "Price is crossing back and forth through the averages. No bias today; be careful.",
+      chart: { seed: 7103, structure: "range", bars: 120, mas: [9, 21, 50] },
+    },
+    {
+      id: "q4",
+      type: "choice",
+      tag: "bias",
+      prompt: "Your bias is bearish but the first candle rips higher through the premarket high. You:",
+      choices: ["Short it, the bias says so", "Don't fight it; either take the long with a tight target or wait", "Double your short"],
+      answer: 1,
+      explain: "Bias is a lean, not a law. Never trade against what price is actually doing.",
+    },
+  ],
+};
+
+const l7_3: Lesson = {
+  id: "s7-levels",
+  title: "The levels of the day",
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "key-levels",
+      title: "PMH, PML, PDH, PDL and the ORB",
+      body: [
+        "Premarket high and low (PMH / PML, orange): what the early session already tested. A 5-minute close through one of these is your first sign of real direction.",
+        "Yesterday's high and low (PDH / PDL, purple): the obvious targets. A quick trade off the open runs to the nearest one, or to the nearest daily support/resistance if that's closer.",
+        "The 15-minute opening range (ORB, blue): the high and low of the first three 5-minute candles. The break out of it, and how price behaves right after, is the trigger.",
+      ],
+      chart: { seed: 7301, structure: "bull", scenario: "continuation-up" },
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "key-levels",
+      prompt: "The 15-minute opening range is:",
+      choices: [
+        "The high and low of the first 5-minute candle",
+        "The high and low of the first three 5-minute candles",
+        "Yesterday's range",
+        "The premarket range",
+      ],
+      answer: 1,
+      explain: "9:30, 9:35, 9:40. Their combined high and low is the ORB.",
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "key-levels",
+      prompt: "You go long off the open. Where's your first target?",
+      choices: [
+        "The nearest of PDH or a daily resistance above",
+        "Always PDH, no matter how far",
+        "Double the ORB height",
+        "Wherever it's at 10:30",
+      ],
+      answer: 0,
+      explain: "Nearest obvious level first. Long: resistance above. Short: support below. Lock in profit there.",
+    },
+    {
+      id: "q3",
+      type: "choice",
+      tag: "key-levels",
+      prompt: "Price breaks above the ORB high but the 5-minute candle closes back below the PMH. Is that continuation?",
+      choices: ["Yes, it broke the ORB", "Not yet; you need a 5-minute close beyond the PMH/PML", "Only if it's after 10:30"],
+      answer: 1,
+      explain: "The ORB break is the setup; the close through the premarket level is the confirmation.",
+    },
+  ],
+};
+
+const l7_4: Lesson = {
+  id: "s7-first-candle",
+  title: "The first five minutes",
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "orb",
+      title: "When the first candle already decides",
+      body: [
+        "Sometimes the first 5-minute candle opens and closes straight through the PMH or PML. That's an open drive: no waiting for the ORB.",
+        "You can take a quick trade in that direction, target the nearest support/resistance or PDH/PDL, and be out fast. Volume is highest in the first half hour, so the move is most reliable then.",
+        "If the first candle is still inside the premarket range, do nothing yet. Let the 15-minute range form.",
+      ],
+    },
+    {
+      id: "r1",
+      type: "replay",
+      tag: "orb",
+      prompt: "First candle just closed. Long, short, or wait?",
+      chart: { seed: 7401, structure: "bull", scenario: "open-drive-up" },
+      explain: "A 5-minute close above the PMH on heavy opening volume. Quick long to PDH.",
+    },
+    {
+      id: "r2",
+      type: "replay",
+      tag: "orb",
+      prompt: "First candle just closed. Long, short, or wait?",
+      chart: { seed: 7402, structure: "bear", scenario: "open-drive-down" },
+      explain: "Closed through the PML on volume. Quick short to PDL.",
+    },
+    {
+      id: "r3",
+      type: "replay",
+      tag: "orb",
+      prompt: "First 5-minute close after the ORB. Long, short, or wait?",
+      chart: { seed: 7403, structure: "range", scenario: "chop" },
+      explain: "Still inside the range, nothing confirmed. Skipping was right.",
+    },
+  ],
+};
+
+const l7_5: Lesson = {
+  id: "s7-orb",
+  title: "Trading the 15-minute ORB",
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "orb",
+      title: "Real break or fake break?",
+      body: [
+        "The ideal trade: price breaks out of the 15-minute ORB and the next 5-minute candle closes beyond the PMH (or PML), on strong volume, early in the session. That's continuation. Take it toward the nearest target.",
+        "The trap: price pokes out of the ORB on thin volume and the candle closes back inside. A failed breakout likely reverses. Don't chase the poke.",
+        "Watch the volume bars under the chart. A break without volume is a question, not an answer.",
+      ],
+      chart: { seed: 7501, structure: "range", scenario: "failed-up" },
+    },
+    {
+      id: "r1",
+      type: "replay",
+      tag: "orb",
+      prompt: "ORB formed, one 5-minute candle closed after it. Long, short, or skip?",
+      chart: { seed: 7502, structure: "bull", scenario: "continuation-up" },
+      explain: "Broke the ORB high and closed above PMH on volume. Continuation long toward PDH.",
+    },
+    {
+      id: "r2",
+      type: "replay",
+      tag: "orb",
+      prompt: "ORB formed, one 5-minute candle closed after it. Long, short, or skip?",
+      chart: { seed: 7503, structure: "range", scenario: "failed-up" },
+      explain: "The wick went above the ORB but the candle closed back inside on weak volume. Failed break; it reversed. Skip.",
+    },
+    {
+      id: "r3",
+      type: "replay",
+      tag: "orb",
+      prompt: "ORB formed, one 5-minute candle closed after it. Long, short, or skip?",
+      chart: { seed: 7504, structure: "bear", scenario: "continuation-down" },
+      explain: "Broke the ORB low and closed below PML with volume. Short toward PDL.",
+    },
+    {
+      id: "r4",
+      type: "replay",
+      tag: "orb",
+      prompt: "ORB formed, one 5-minute candle closed after it. Long, short, or skip?",
+      chart: { seed: 7505, structure: "range", scenario: "failed-down" },
+      explain: "Poked under the ORB, closed back inside, no volume. That's a failed break. Skip.",
+    },
+    {
+      id: "r5",
+      type: "replay",
+      tag: "orb",
+      prompt: "ORB formed, one 5-minute candle closed after it. Long, short, or skip?",
+      chart: { seed: 7506, structure: "range", scenario: "chop" },
+      explain: "Never left the range. No trade.",
+    },
+  ],
+};
+
+const l7_6: Lesson = {
+  id: "s7-clock",
+  title: "The clock",
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "clock",
+      title: "When you trade matters as much as what",
+      body: [
+        "Morning window: the open to about 10:30 CST. Volume is highest, moves are cleanest. Aim to be done by 10:30.",
+        "Midday is chop. Don't force it. If anything, look again from 1:00 to 2:00 CST.",
+        "After 2:00 CST, a 0DTE option is mostly theta. If you trade the afternoon, use 1 or 2 DTE instead so the time decay doesn't eat a correct read.",
+      ],
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "clock",
+      prompt: "It's 11:15 CST. You see something that looks like a setup. You:",
+      choices: ["Take it, a setup is a setup", "Leave it; the morning window is closed and midday is chop", "Take it with 0DTE for extra leverage"],
+      answer: 1,
+      explain: "Be done by 10:30. The next look is 1:00 to 2:00.",
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "clock",
+      prompt: "It's 2:30 CST and you want to trade a clean afternoon breakout. Which expiry?",
+      choices: ["0DTE", "1 or 2 DTE", "30 DTE", "Doesn't matter"],
+      answer: 1,
+      explain: "After 2:00 a 0DTE is melting too fast. 1 or 2 DTE keeps the trade alive.",
+    },
+    {
+      id: "q3",
+      type: "choice",
+      tag: "clock",
+      prompt: "Why is the open-drive trade most reliable in the first half hour?",
+      choices: ["Theta is lowest then", "Volume is highest then, so moves follow through", "Market makers are asleep", "It isn't"],
+      answer: 1,
+      explain: "Early volume is what makes a break stick.",
+    },
+    {
+      id: "q4",
+      type: "choice",
+      tag: "clock",
+      prompt: "You took a long at 9:50 to PDH. It's 10:25 and price is 20 cents short of PDH and stalling. You:",
+      choices: ["Hold for PDH, it's so close", "Lock in the profit", "Add to the position"],
+      answer: 1,
+      explain: "Target a little short of the level, lock in profits, be done by 10:30. Three rules say the same thing.",
+    },
+  ],
+};
+
+const l7_7: Lesson = {
+  id: "s7-checkpoint",
+  title: "Checkpoint: 0DTE",
+  checkpoint: true,
+  exercises: [
+    {
+      id: "q1",
+      type: "choice",
+      tag: "routine",
+      prompt: "Put the morning in order: (A) draw PMH/PML, (B) daily S/R and trendlines, (C) MA bias and FTFC, (D) mark PDH/PDL at the open.",
+      choices: ["A, B, C, D", "B, C, A, D", "D, A, B, C", "C, B, D, A"],
+      answer: 1,
+      explain: "Big levels first, then bias, then the premarket range, then yesterday's range at the open.",
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "bias",
+      prompt: "What's the bias?",
+      choices: ["Bullish", "Bearish", "No bias"],
+      answer: 1,
+      explain: "Price under stacked-down averages.",
+      chart: { seed: 7701, structure: "bear", bars: 120, mas: [9, 21, 50] },
+    },
+    {
+      id: "r1",
+      type: "replay",
+      tag: "orb",
+      prompt: "Long, short, or skip?",
+      chart: { seed: 7702, structure: "bull", scenario: "continuation-up" },
+      explain: "ORB break plus a 5-minute close above PMH on volume. Long.",
+    },
+    {
+      id: "r2",
+      type: "replay",
+      tag: "orb",
+      prompt: "Long, short, or skip?",
+      chart: { seed: 7703, structure: "range", scenario: "failed-down" },
+      explain: "Thin-volume poke, closed back in. Skip.",
+    },
+    {
+      id: "r3",
+      type: "replay",
+      tag: "orb",
+      prompt: "First candle just closed. Long, short, or wait?",
+      chart: { seed: 7704, structure: "bear", scenario: "open-drive-down" },
+      explain: "Closed through the PML on opening volume. Quick short.",
+    },
+    {
+      id: "q3",
+      type: "choice",
+      tag: "clock",
+      prompt: "It's 2:45 CST. The only acceptable option to trade is:",
+      choices: ["0DTE", "1 or 2 DTE", "Weekly, 7 DTE", "None, the day is over"],
+      answer: 1,
+      explain: "After 2:00, 1 or 2 DTE only.",
+    },
+    {
+      id: "r4",
+      type: "replay",
+      tag: "orb",
+      prompt: "Long, short, or skip?",
+      chart: { seed: 7705, structure: "bear", scenario: "continuation-down" },
+      explain: "Break of the ORB low, close under PML with volume. Short to PDL.",
+    },
+  ],
+};
+
 export const STAGES: Stage[] = [
   {
     id: "stage-1",
@@ -1064,8 +1453,8 @@ export const STAGES: Stage[] = [
     id: "stage-7",
     number: 7,
     title: "0DTE",
-    blurb: "Gamma, theta, time of day, and hard loss limits.",
-    units: [],
+    blurb: "The morning routine, bias, key levels, the 15-minute ORB, and the clock.",
+    units: [{ id: "u7", title: "The method", lessons: [l7_1, l7_2, l7_3, l7_4, l7_5, l7_6, l7_7] }],
     premium: true,
   },
 ];

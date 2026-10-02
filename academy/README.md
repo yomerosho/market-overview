@@ -4,7 +4,7 @@ A Duolingo-style course that teaches a complete beginner to read charts,
 candles and market structure, and later to place swing option trades and
 trade 0DTEs. Mobile-first, installable as a PWA, works on desktop too.
 
-This is the **stage 1–5 prototype**: the lesson path, hearts, XP, streaks,
+This is the **prototype of stages 1–5 and 7** (stage 6, swing options, is next): the lesson path, hearts, XP, streaks,
 concept mastery, and the drill types, all running on synthetic charts with
 known answers. Progress is kept in the browser for now (see *Roadmap*).
 
@@ -25,13 +25,15 @@ toolbar. "Add to Home Screen" installs it as an app.
 |---|---|
 | `src/content/stages.ts` | **The curriculum.** Stages → units → lessons → exercises, as plain data. Add a lesson by adding an object; no code changes. |
 | `src/lib/types.ts` | The content model: the five exercise types the player knows how to render and grade. |
+| `src/lib/intraday.ts` | Synthetic 5-minute session charts for the 0DTE drills: premarket, PMH/PML, PDH/PDL, a 15-minute ORB and a scripted outcome (open drive, continuation, failed break, chop) with volume. |
+| `src/lib/charts.ts` | `resolveChart(spec)`: one entry point that returns candles, levels, MA overlays and the expected replay answer for either generator. |
 | `src/lib/chart-gen.ts` | Deterministic synthetic OHLC generator. Given a seed and a structure (`bull` / `bear` / `range`) it builds a chart *and* its answer key (swing highs/lows). Same seed, same chart, every time, on every device. |
 | `src/lib/options.ts` | Black-Scholes pricing (zero rates) for the options lab. |
 | `src/lib/progress.ts` | Per-user progress: XP, hearts (refill one per 30 min), streak, lesson results, per-concept mastery. localStorage today; the same shape becomes a DB row per user. |
 | `src/components/LessonPlayer.tsx` | Runs a lesson: progress bar, hearts, pass/fail (70%, checkpoints 85%), end screens. |
 | `src/components/exercises/` | One component per exercise type. |
 | `src/components/Candles.tsx` | Chart rendering (TradingView Lightweight Charts) with tap-to-mark, swing markers and horizontal levels. |
-| `src/components/Path.tsx` | The stage map. Lessons unlock in order; stages 5–7 are placeholders marked Premium. |
+| `src/components/Path.tsx` | The stage map. Lessons unlock in order; stages 5–7 are marked Premium. |
 
 ### Exercise types
 
@@ -40,7 +42,7 @@ toolbar. "Add to Home Screen" installs it as an app.
 - **classify** — bull / bear / no trend, on a generated chart.
 - **tap-swings** — tap every swing high (or low). Graded with a ±2-bar tolerance; misses and extras are shown on the chart.
 - **tap-candle** — tap the body / upper wick / lower wick of a big SVG candle.
-- **replay** — the chart stops at the right edge; choose long / short / skip, then the hidden bars play forward and the trade's % move is shown. Graded on the decision (with the structure), not the outcome.
+- **replay** — the chart stops at the right edge; choose long / short / skip, then the hidden bars play forward and the trade's % move is shown. Graded on the decision, not the outcome. On intraday charts the stop point is the first 5-minute close after the ORB (or the first candle, for an open drive) and the answer follows the scenario.
 - **options-lab** — a Black-Scholes pricer with strike and days-to-expiry sliders, live premium / delta / theta and a P&L-at-expiry curve. Each lab sets a goal to hit (an OTM call, 0.40–0.60 delta, ≤7 DTE, ≤$1 premium).
 
 ### Design rules

@@ -21,6 +21,11 @@ const LABELS: Record<string, string> = {
   "options-basics": "Calls & puts",
   "strikes-expiry": "Strikes & expiry",
   greeks: "Greeks",
+  routine: "Morning routine",
+  bias: "Bias (MAs / FTFC)",
+  "key-levels": "Key levels",
+  orb: "ORB breakouts",
+  clock: "Time of day",
 };
 
 export default function Profile() {

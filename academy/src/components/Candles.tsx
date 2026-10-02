@@ -1,23 +1,27 @@
 "use client";
 
 // Candlestick chart wrapper around TradingView Lightweight Charts.
-// Handles tap-to-select on candles, swing markers, and horizontal levels.
+// Handles tap-to-select on candles, swing markers, horizontal levels,
+// line overlays (moving averages) and a volume histogram.
 
 import {
   CandlestickSeries,
   ColorType,
   CrosshairMode,
+  HistogramSeries,
+  LineSeries,
   createChart,
   createSeriesMarkers,
   type IChartApi,
-  type ISeriesApi,
   type IPriceLine,
+  type ISeriesApi,
   type ISeriesMarkersPluginApi,
   type SeriesMarker,
   type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import type { Overlay } from "@/lib/charts";
 import type { Candle, Level } from "@/lib/types";
 
 export type Marker = { index: number; kind: "high" | "low"; color: string; text?: string };
@@ -26,15 +30,29 @@ type Props = {
   candles: Candle[];
   levels?: Level[];
   markers?: Marker[];
+  overlays?: Overlay[];
+  /** Show clock times on the axis (intraday) instead of dates. */
+  intraday?: boolean;
   onTap?: (index: number) => void;
   height?: number;
 };
 
-export default function Candles({ candles, levels, markers, onTap, height = 260 }: Props) {
+export default function Candles({
+  candles,
+  levels,
+  markers,
+  overlays,
+  intraday = false,
+  onTap,
+  height = 260,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const linesRef = useRef<IPriceLine[]>([]);
+  const overlayRef = useRef<ISeriesApi<"Line">[]>([]);
   const onTapRef = useRef(onTap);
   useEffect(() => {
     onTapRef.current = onTap;
@@ -53,8 +71,14 @@ export default function Candles({ candles, levels, markers, onTap, height = 260 
         attributionLogo: true,
       },
       grid: { vertLines: { color: "#1f2937" }, horzLines: { color: "#1f2937" } },
-      rightPriceScale: { borderColor: "#374151" },
-      timeScale: { borderColor: "#374151", timeVisible: false, fixLeftEdge: true, fixRightEdge: true },
+      rightPriceScale: { borderColor: "#374151", scaleMargins: { top: 0.08, bottom: 0.22 } },
+      timeScale: {
+        borderColor: "#374151",
+        timeVisible: intraday,
+        secondsVisible: false,
+        fixLeftEdge: true,
+        fixRightEdge: true,
+      },
       handleScroll: false,
       handleScale: false,
       crosshair: { mode: CrosshairMode.Hidden },
@@ -69,11 +93,20 @@ export default function Candles({ candles, levels, markers, onTap, height = 260 
       lastValueVisible: false,
       priceLineVisible: false,
     });
+    const volume = chart.addSeries(HistogramSeries, {
+      priceFormat: { type: "volume" },
+      priceScaleId: "volume",
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+
     const ro = new ResizeObserver(() => chart.applyOptions({ width: el.clientWidth }));
     ro.observe(el);
 
     chartRef.current = chart;
     seriesRef.current = series;
+    volumeRef.current = volume;
     markersRef.current = createSeriesMarkers(series, []);
 
     return () => {
@@ -81,30 +114,59 @@ export default function Candles({ candles, levels, markers, onTap, height = 260 
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
+      volumeRef.current = null;
       markersRef.current = null;
+      linesRef.current = [];
+      overlayRef.current = [];
     };
-  }, [height]);
+  }, [height, intraday]);
 
-  // Data and levels update in place; recreating the chart per bar (the replay
-  // drill adds one every 120ms) is slow and flickers.
-  const linesRef = useRef<IPriceLine[]>([]);
+  // Data, levels and overlays update in place; recreating the chart per bar
+  // (the replay drill adds one every 120ms) is slow and flickers.
   useEffect(() => {
     const series = seriesRef.current;
     const chart = chartRef.current;
-    if (!series || !chart) return;
+    const volume = volumeRef.current;
+    if (!series || !chart || !volume) return;
+
     series.setData(candles.map((c) => ({ ...c, time: c.time as UTCTimestamp })));
+    volume.setData(
+      candles
+        .filter((c) => c.volume != null)
+        .map((c) => ({
+          time: c.time as UTCTimestamp,
+          value: c.volume as number,
+          color: c.close >= c.open ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)",
+        })),
+    );
+
     for (const line of linesRef.current) series.removePriceLine(line);
     linesRef.current = (levels ?? []).map((lv) =>
       series.createPriceLine({
         price: lv.price,
         color: lv.color ?? "#eab308",
         lineWidth: 2,
+        lineStyle: 2,
         title: lv.label,
         axisLabelVisible: true,
       }),
     );
+
+    for (const s of overlayRef.current) chart.removeSeries(s);
+    overlayRef.current = (overlays ?? []).map((o) => {
+      const s = chart.addSeries(LineSeries, {
+        color: o.color,
+        lineWidth: 2,
+        lastValueVisible: true,
+        priceLineVisible: false,
+        title: o.label,
+      });
+      s.setData(o.points.map((p) => ({ time: p.time as UTCTimestamp, value: p.value })));
+      return s;
+    });
+
     chart.timeScale().fitContent();
-  }, [candles, levels]);
+  }, [candles, levels, overlays]);
 
   useEffect(() => {
     const plugin = markersRef.current;

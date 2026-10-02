@@ -2,10 +2,10 @@
 
 import { useMemo } from "react";
 import Candles, { type Marker } from "@/components/Candles";
-import { generateChart } from "@/lib/chart-gen";
+import { resolveChart } from "@/lib/charts";
 import type { ChartSpec, Level } from "@/lib/types";
 
-/** Renders a generated chart from a spec. */
+/** Renders whatever chart a spec describes, daily or intraday. */
 export default function ChartFor({
   spec,
   levels,
@@ -17,6 +17,16 @@ export default function ChartFor({
   markers?: Marker[];
   onTap?: (i: number) => void;
 }) {
-  const chart = useMemo(() => generateChart(spec), [spec]);
-  return <Candles candles={chart.candles} levels={levels} markers={markers} onTap={onTap} />;
+  const chart = useMemo(() => resolveChart(spec), [spec]);
+  const allLevels = useMemo(() => [...chart.levels, ...(levels ?? [])], [chart.levels, levels]);
+  return (
+    <Candles
+      candles={chart.candles}
+      levels={allLevels}
+      overlays={chart.overlays}
+      intraday={chart.intraday}
+      markers={markers}
+      onTap={onTap}
+    />
+  );
 }

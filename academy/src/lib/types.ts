@@ -8,14 +8,35 @@ export type Candle = {
   high: number;
   low: number;
   close: number;
+  volume?: number;
 };
 
 export type Structure = "bull" | "bear" | "range";
 
+/**
+ * How an intraday session plays out after the open. Drives both the bars
+ * and the "right answer" for the 0DTE drills.
+ */
+export type IntradayScenario =
+  | "open-drive-up" // first 5-min candle closes above PMH, runs to PDH
+  | "open-drive-down"
+  | "continuation-up" // breaks the 15-min ORB, 5-min close above PMH, continues
+  | "continuation-down"
+  | "failed-up" // pokes above the ORB on weak volume, closes back in, reverses
+  | "failed-down"
+  | "chop"; // never leaves the ORB
+
 export type ChartSpec = {
   seed: number;
+  /** Daily chart with a given structure. Ignored when `scenario` is set. */
   structure: Structure;
   bars?: number;
+  /** 5-minute session chart instead of a daily one. */
+  scenario?: IntradayScenario;
+  /** Draw PMH / PML / PDH / PDL / ORB on an intraday chart. */
+  showLevels?: boolean;
+  /** Overlay simple moving averages of these lengths on a daily chart. */
+  mas?: number[];
 };
 
 /** A labelled horizontal level drawn on the chart. */
@@ -37,7 +58,12 @@ export type ConceptTag =
   | "process"
   | "options-basics"
   | "strikes-expiry"
-  | "greeks";
+  | "greeks"
+  | "routine"
+  | "bias"
+  | "key-levels"
+  | "orb"
+  | "clock";
 
 type Base = { id: string; tag: ConceptTag };
 
@@ -95,7 +121,8 @@ export type ReplayExercise = Base & {
   type: "replay";
   prompt: string;
   chart: ChartSpec;
-  reveal: number;
+  /** Bars shown before the decision. Intraday charts have a sensible default. */
+  reveal?: number;
   explain: string;
 };
 

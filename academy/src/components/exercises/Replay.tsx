@@ -3,20 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import Candles from "@/components/Candles";
 import Feedback from "./Feedback";
-import { generateChart } from "@/lib/chart-gen";
-import type { ReplayExercise, Structure } from "@/lib/types";
+import { resolveChart } from "@/lib/charts";
+import type { ReplayExercise } from "@/lib/types";
 
 type Action = "long" | "short" | "skip";
-const EXPECTED: Record<Structure, Action> = { bull: "long", bear: "short", range: "skip" };
 const LABEL: Record<Action, string> = { long: "Go long", short: "Go short", skip: "Skip it" };
 
 type Props = { ex: ReplayExercise; onAnswer: (correct: boolean) => void; onNext: () => void };
 
 export default function Replay({ ex, onAnswer, onNext }: Props) {
-  const gen = useMemo(() => generateChart(ex.chart), [ex.chart]);
-  const [shown, setShown] = useState(ex.reveal);
+  const gen = useMemo(() => resolveChart(ex.chart), [ex.chart]);
+  const reveal = ex.reveal ?? gen.reveal;
+  const [shown, setShown] = useState(reveal);
   const [picked, setPicked] = useState<Action | null>(null);
-  const expected = EXPECTED[ex.chart.structure];
+  const expected = gen.expected;
   const correct = picked === expected;
   const finished = shown >= gen.candles.length;
 
@@ -28,7 +28,11 @@ export default function Replay({ ex, onAnswer, onNext }: Props) {
   }, [picked, shown, finished]);
 
   const visible = useMemo(() => gen.candles.slice(0, shown), [gen, shown]);
-  const entry = gen.candles[ex.reveal - 1].close;
+  const entry = gen.candles[reveal - 1].close;
+  const levels = useMemo(
+    () => (picked ? [...gen.levels, { label: "entry", price: entry, color: "#60a5fa" }] : gen.levels),
+    [gen.levels, picked, entry],
+  );
   const last = visible[visible.length - 1].close;
   const move = ((last - entry) / entry) * 100;
   const pnl = picked === "long" ? move : picked === "short" ? -move : 0;
@@ -38,7 +42,8 @@ export default function Replay({ ex, onAnswer, onNext }: Props) {
       <h2 className="text-lg font-semibold">{ex.prompt}</h2>
       <Candles
         candles={visible}
-        levels={picked ? [{ label: "entry", price: entry, color: "#60a5fa" }] : undefined}
+        intraday={gen.intraday}
+        levels={levels}
       />
       {picked === null ? (
         <div className="grid grid-cols-3 gap-2">
