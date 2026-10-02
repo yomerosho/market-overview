@@ -36,41 +36,53 @@ export default function Path() {
               }`}
             >
               <div className="text-xs uppercase tracking-wide opacity-70">
-                Stage {stage.number}
-                {stage.premium && " · Premium"}
+                {stage.premium && "Premium"}
               </div>
               <div className="text-xl font-bold">{stage.title}</div>
               <div className="text-sm opacity-80">{stage.blurb}</div>
             </div>
 
-            {lessons.length === 0 ? (
+            {stage.units.length === 0 ? (
               <div className="mt-3 text-center text-sm text-zinc-500">Coming soon</div>
             ) : (
-              <ol className="mt-4 flex flex-col items-center gap-4">
-                {lessons.map((l, idx) => {
-                  const r = progress.lessons[l.id];
-                  const unlocked = isLessonUnlocked(l.id, progress.lessons);
-                  const offset = ["", "translate-x-10", "translate-x-16", "translate-x-10", "", "-translate-x-10", "-translate-x-16", "-translate-x-10"][idx % 8];
-                  let cls = "bg-zinc-800 text-zinc-500";
-                  if (r?.passed) cls = "bg-emerald-500 text-zinc-950";
-                  else if (unlocked) cls = "bg-sky-500 text-zinc-950 ring-4 ring-sky-500/30";
-                  const node = (
-                    <div className={`flex flex-col items-center gap-1 ${offset}`}>
-                      <div
-                        className={`flex h-16 w-16 items-center justify-center rounded-full text-2xl font-bold shadow-lg ${cls}`}
+              stage.units.map((unit) => {
+                const unitDone = unit.lessons.every((l) => progress.lessons[l.id]?.passed);
+                const unitOpen = isLessonUnlocked(unit.lessons[0].id, progress.lessons);
+                return (
+                  <div key={unit.id} className="mt-5">
+                    <div className="mb-3 flex items-center gap-2 text-sm">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                          unitDone ? "bg-emerald-500 text-zinc-950" : unitOpen ? "bg-sky-500 text-zinc-950" : "bg-zinc-800 text-zinc-500"
+                        }`}
                       >
-                        {r?.passed ? "✓" : l.checkpoint ? "🏁" : unlocked ? "★" : "🔒"}
-                      </div>
-                      <div className="max-w-40 text-center text-xs text-zinc-300">{l.title}</div>
+                        Day {unit.day}
+                      </span>
+                      <span className={unitOpen ? "text-zinc-200" : "text-zinc-500"}>{unit.title}</span>
                     </div>
-                  );
-                  return (
-                    <li key={l.id}>
-                      {unlocked ? <Link href={`/lesson/${l.id}`}>{node}</Link> : node}
-                    </li>
-                  );
-                })}
-              </ol>
+                    <ol className="flex flex-col gap-2">
+                      {unit.lessons.map((l) => {
+                        const r = progress.lessons[l.id];
+                        const unlocked = isLessonUnlocked(l.id, progress.lessons);
+                        const generated = typeof l.exercises === "function";
+                        let cls = "border-zinc-800 bg-zinc-900/60 text-zinc-500";
+                        if (r?.passed) cls = "border-emerald-700 bg-emerald-950 text-zinc-100";
+                        else if (unlocked) cls = "border-sky-600 bg-sky-950 text-zinc-100";
+                        const node = (
+                          <div className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${cls}`}>
+                            <span className="w-6 text-center text-lg">
+                              {r?.passed ? "✓" : l.checkpoint ? "🏁" : unlocked ? (generated ? "⟳" : "★") : "🔒"}
+                            </span>
+                            <span className="flex-1 text-sm">{l.title}</span>
+                            <span className="text-xs text-zinc-500">{l.minutes ?? 4} min</span>
+                          </div>
+                        );
+                        return <li key={l.id}>{unlocked ? <Link href={`/lesson/${l.id}`}>{node}</Link> : node}</li>;
+                      })}
+                    </ol>
+                  </div>
+                );
+              })
             )}
           </section>
         );

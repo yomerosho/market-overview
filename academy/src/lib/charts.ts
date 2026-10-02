@@ -3,13 +3,14 @@
 
 import { generateChart } from "./chart-gen";
 import { generateIntraday } from "./intraday";
-import type { Candle, ChartSpec, Level } from "./types";
+import type { Box, Candle, ChartSpec, Level } from "./types";
 
 export type Overlay = { label: string; color: string; points: { time: number; value: number }[] };
 
 export type ResolvedChart = {
   candles: Candle[];
   levels: Level[];
+  boxes: Box[];
   overlays: Overlay[];
   swingHighs: number[];
   swingLows: number[];
@@ -26,7 +27,8 @@ export function resolveChart(spec: ChartSpec): ResolvedChart {
     return {
       candles: g.candles,
       levels: spec.showLevels === false ? [] : g.levels,
-      overlays: [],
+      boxes: spec.showLevels === false ? [] : g.boxes,
+      overlays: [{ label: "VWAP", color: "#e5e7eb", points: g.vwap }],
       swingHighs: [],
       swingLows: [],
       intraday: true,
@@ -43,6 +45,7 @@ export function resolveChart(spec: ChartSpec): ResolvedChart {
   return {
     candles: g.candles,
     levels: [],
+    boxes: [],
     overlays,
     swingHighs: g.swingHighs,
     swingLows: g.swingLows,

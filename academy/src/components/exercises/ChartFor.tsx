@@ -24,6 +24,7 @@ export default function ChartFor({
       candles={chart.candles}
       levels={allLevels}
       overlays={chart.overlays}
+      boxes={chart.boxes}
       intraday={chart.intraday}
       markers={markers}
       onTap={onTap}

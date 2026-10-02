@@ -10,5 +10,5 @@ export default async function LessonPage({ params }: PageProps<"/lesson/[id]">) 
   const { id } = await params;
   const lesson = findLesson(id);
   if (!lesson) notFound();
-  return <LessonPlayer lesson={lesson} />;
+  return <LessonPlayer lessonId={lesson.id} />;
 }

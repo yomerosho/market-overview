@@ -2,7 +2,8 @@
 
 // Candlestick chart wrapper around TradingView Lightweight Charts.
 // Handles tap-to-select on candles, swing markers, horizontal levels,
-// line overlays (moving averages) and a volume histogram.
+// line overlays (moving averages, VWAP), translucent boxes (the opening
+// range) and a volume histogram.
 
 import {
   CandlestickSeries,
@@ -20,9 +21,9 @@ import {
   type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { Overlay } from "@/lib/charts";
-import type { Candle, Level } from "@/lib/types";
+import type { Box, Candle, Level } from "@/lib/types";
 
 export type Marker = { index: number; kind: "high" | "low"; color: string; text?: string };
 
@@ -31,6 +32,7 @@ type Props = {
   levels?: Level[];
   markers?: Marker[];
   overlays?: Overlay[];
+  boxes?: Box[];
   /** Show clock times on the axis (intraday) instead of dates. */
   intraday?: boolean;
   onTap?: (index: number) => void;
@@ -42,10 +44,12 @@ export default function Candles({
   levels,
   markers,
   overlays,
+  boxes,
   intraday = false,
   onTap,
   height = 260,
 }: Props) {
+  const [boxRects, setBoxRects] = useState<{ box: Box; left: number; top: number; width: number; height: number }[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -146,7 +150,7 @@ export default function Candles({
         price: lv.price,
         color: lv.color ?? "#eab308",
         lineWidth: 2,
-        lineStyle: 2,
+        lineStyle: lv.style === "solid" ? 0 : 2,
         title: lv.label,
         axisLabelVisible: true,
       }),
@@ -167,6 +171,37 @@ export default function Candles({
 
     chart.timeScale().fitContent();
   }, [candles, levels, overlays]);
+
+  // Boxes are plain divs over the chart, placed from chart coordinates once
+  // the chart has laid out (a frame later), and again whenever it resizes.
+  useEffect(() => {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    const el = containerRef.current;
+    if (!chart || !series || !el) return;
+    const place = () => {
+      const rects = (boxes ?? []).flatMap((box) => {
+        const from = candles[box.from];
+        const to = candles[Math.min(box.to, candles.length - 1)];
+        if (!from || !to) return [];
+        const x1 = chart.timeScale().timeToCoordinate(from.time as UTCTimestamp);
+        const x2 = chart.timeScale().timeToCoordinate(to.time as UTCTimestamp);
+        const y1 = series.priceToCoordinate(box.top);
+        const y2 = series.priceToCoordinate(box.bottom);
+        if (x1 == null || x2 == null || y1 == null || y2 == null) return [];
+        const half = candles.length > 1 ? (x2 - x1) / Math.max(1, box.to - box.from) / 2 : 4;
+        return [{ box, left: x1 - half, top: y1, width: x2 - x1 + half * 2, height: y2 - y1 }];
+      });
+      setBoxRects(rects);
+    };
+    const raf = requestAnimationFrame(place);
+    const ro = new ResizeObserver(() => requestAnimationFrame(place));
+    ro.observe(el);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [boxes, candles, levels, overlays]);
 
   useEffect(() => {
     const plugin = markersRef.current;
@@ -208,12 +243,31 @@ export default function Candles({
   };
 
   return (
-    <div
-      ref={containerRef}
-      className={`w-full select-none ${onTap ? "cursor-pointer" : ""}`}
-      style={{ height, touchAction: "manipulation" }}
-      onPointerDown={onPointerDown}
-      onPointerUp={onPointerUp}
-    />
+    <div className="relative w-full" style={{ height }}>
+      <div
+        ref={containerRef}
+        className={`h-full w-full select-none ${onTap ? "cursor-pointer" : ""}`}
+        style={{ touchAction: "manipulation" }}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+      />
+      {boxRects.map(({ box, left, top, width, height: h }, i) => (
+        <div
+          key={i}
+          className="pointer-events-none absolute rounded-sm border text-[10px] leading-none"
+          style={{
+            left,
+            top,
+            width,
+            height: h,
+            background: `${box.color}33`,
+            borderColor: `${box.color}aa`,
+            color: box.color,
+          }}
+        >
+          {box.label && <span className="absolute left-1 top-1 opacity-90">{box.label}</span>}
+        </div>
+      ))}
+    </div>
   );
 }

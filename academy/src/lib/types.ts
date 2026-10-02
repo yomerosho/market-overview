@@ -24,6 +24,8 @@ export type IntradayScenario =
   | "continuation-down"
   | "failed-up" // pokes above the ORB on weak volume, closes back in, reverses
   | "failed-down"
+  | "reversal-short" // failed-up, then a 5-min bearish engulfing candle: short to the ORB low
+  | "reversal-long" // failed-down, then a bullish engulfing candle: long to the ORB high
   | "chop"; // never leaves the ORB
 
 export type ChartSpec = {
@@ -40,7 +42,12 @@ export type ChartSpec = {
 };
 
 /** A labelled horizontal level drawn on the chart. */
-export type Level = { label: string; price: number; color?: string };
+export type Level = { label: string; price: number; color?: string; style?: "solid" | "dashed" };
+
+/** A translucent box over a range of bars, e.g. the opening range. */
+export type Box = { from: number; to: number; top: number; bottom: number; color: string; label?: string };
+
+export type Timeframe = "1W" | "1D" | "4H" | "1H" | "15m";
 
 export type ConceptTag =
   | "axes"
@@ -141,8 +148,19 @@ export type OptionsLabExercise = Base & {
   explain: string;
 };
 
+/** An FTFC panel like the one on the author's chart: five timeframes, each up or down. */
+export type FtfcExercise = Base & {
+  type: "ftfc";
+  prompt: string;
+  frames: { tf: Timeframe; up: boolean }[];
+  /** "bias": full bull / full bear / partial. "count": how many agree with the weekly. */
+  ask: "bias" | "count";
+  explain: string;
+};
+
 export type Exercise =
   | TeachExercise
+  | FtfcExercise
   | ReplayExercise
   | OptionsLabExercise
   | ChoiceExercise
@@ -150,15 +168,24 @@ export type Exercise =
   | TapSwingsExercise
   | TapCandleExercise;
 
+export type Mastery = Partial<Record<ConceptTag, { correct: number; attempted: number }>>;
+
+/** What a generated lesson gets to build its exercises from. */
+export type BuildContext = { seed: number; mastery: Mastery };
+
 export type Lesson = {
   id: string;
   title: string;
+  /** Rough minutes, shown on the path. */
+  minutes?: number;
   /** A checkpoint lesson gates the next stage and needs a higher score. */
   checkpoint?: boolean;
-  exercises: Exercise[];
+  /** Static, or built fresh each attempt (drills and reviews). */
+  exercises: Exercise[] | ((ctx: BuildContext) => Exercise[]);
 };
 
-export type Unit = { id: string; title: string; lessons: Lesson[] };
+/** A unit is one day of the programme. */
+export type Unit = { id: string; day: number; title: string; lessons: Lesson[] };
 
 export type Stage = {
   id: string;

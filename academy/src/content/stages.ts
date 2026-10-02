@@ -2,7 +2,8 @@
 // Lesson text is written for a complete beginner; drills reuse the same
 // generated charts the teaching cards show, so what is taught is what is tested.
 
-import type { Lesson, Stage } from "@/lib/types";
+import { practiceSet, reviewSet } from "./drills";
+import type { ConceptTag, Lesson, Stage, Unit } from "@/lib/types";
 
 // ---------- Stage 1: Reading charts ----------
 
@@ -1158,9 +1159,10 @@ const l7_3: Lesson = {
       tag: "key-levels",
       title: "PMH, PML, PDH, PDL and the ORB",
       body: [
-        "Premarket high and low (PMH / PML, orange): what the early session already tested. A 5-minute close through one of these is your first sign of real direction.",
-        "Yesterday's high and low (PDH / PDL, purple): the obvious targets. A quick trade off the open runs to the nearest one, or to the nearest daily support/resistance if that's closer.",
-        "The 15-minute opening range (ORB, blue): the high and low of the first three 5-minute candles. The break out of it, and how price behaves right after, is the trigger.",
+        "Premarket high and low (PMH / PML, blue dashed): what the early session already tested. A 5-minute close through one of these is your first sign of real direction.",
+        "Yesterday's high and low (PDH / PDL, yellow dashed): the obvious targets. A quick trade off the open runs to the nearest one, or to the nearest daily support/resistance if that's closer.",
+        "The 15-minute opening range (the ORB box): the high and low of the first three 5-minute candles, drawn as a translucent box. The break out of the box, and how price behaves right after, is the trigger.",
+        "The white line is VWAP, the session's volume-weighted average price. Price holding above it leans bullish; below leans bearish.",
       ],
       chart: { seed: 7301, structure: "bull", scenario: "continuation-up" },
     },
@@ -1196,7 +1198,7 @@ const l7_3: Lesson = {
       id: "q3",
       type: "choice",
       tag: "key-levels",
-      prompt: "Price breaks above the ORB high but the 5-minute candle closes back below the PMH. Is that continuation?",
+      prompt: "Price breaks above the ORB box but the 5-minute candle closes back below the PMH. Is that continuation?",
       choices: ["Yes, it broke the ORB", "Not yet; you need a 5-minute close beyond the PMH/PML", "Only if it's after 10:30"],
       answer: 1,
       explain: "The ORB break is the setup; the close through the premarket level is the confirmation.",
@@ -1256,9 +1258,10 @@ const l7_5: Lesson = {
       tag: "orb",
       title: "Real break or fake break?",
       body: [
-        "The ideal trade: price breaks out of the 15-minute ORB and the next 5-minute candle closes beyond the PMH (or PML), on strong volume, early in the session. That's continuation. Take it toward the nearest target.",
-        "The trap: price pokes out of the ORB on thin volume and the candle closes back inside. A failed breakout likely reverses. Don't chase the poke.",
+        "The ideal trade: price breaks out of the 15-minute ORB box and the next 5-minute candle closes beyond the PMH (or PML), on strong volume, early in the session. That's continuation. Take it toward the nearest target.",
+        "The trap: price pokes out of the box on thin volume and the candle closes back inside. A failed breakout likely reverses. Don't chase the poke.",
         "Watch the volume bars under the chart. A break without volume is a question, not an answer.",
+        "And never buy the top. By the time price is sitting at the target, the trade is ending, not starting. The entry was at the break.",
       ],
       chart: { seed: 7501, structure: "range", scenario: "failed-up" },
     },
@@ -1268,7 +1271,7 @@ const l7_5: Lesson = {
       tag: "orb",
       prompt: "ORB formed, one 5-minute candle closed after it. Long, short, or skip?",
       chart: { seed: 7502, structure: "bull", scenario: "continuation-up" },
-      explain: "Broke the ORB high and closed above PMH on volume. Continuation long toward PDH.",
+      explain: "Broke the ORB box and closed above PMH on volume. Continuation long toward PDH.",
     },
     {
       id: "r2",
@@ -1427,57 +1430,148 @@ const l7_7: Lesson = {
   ],
 };
 
+const l7_5b: Lesson = {
+  id: "s7-reversal",
+  title: "The failed-breakout reversal",
+  minutes: 6,
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "orb",
+      title: "When the break fails, trade the failure",
+      body: [
+        "A weak break out of the ORB box is a setup of its own. Price pokes through on thin volume and can't hold.",
+        "What you're waiting for is a 5-minute engulfing reversal candle: a candle in the opposite direction whose body swallows the poke candle's body, ideally on volume.",
+        "Enter after that candle closes, not before. Target the opposite side of the ORB box.",
+        "This is the mirror of the continuation trade. Same levels, same patience, opposite direction.",
+      ],
+      chart: { seed: 7551, structure: "range", scenario: "reversal-short" },
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "orb",
+      prompt: "Weak break above the box, then a big red candle engulfs the poke candle. The trade is:",
+      choices: ["Long, the break is confirmed", "Short after the engulfing candle closes, target the bottom of the box", "Skip, failed breaks are never traded"],
+      answer: 1,
+      explain: "Failed break + engulfing reversal = short to the far side of the ORB.",
+    },
+    {
+      id: "r1",
+      type: "replay",
+      tag: "orb",
+      prompt: "A candle just closed after the ORB poke. Long, short, or skip?",
+      chart: { seed: 7552, structure: "range", scenario: "reversal-short" },
+      explain: "Weak break above, bearish engulfing on volume. Short on its close, target the ORB low.",
+    },
+    {
+      id: "r2",
+      type: "replay",
+      tag: "orb",
+      prompt: "A candle just closed after the ORB poke. Long, short, or skip?",
+      chart: { seed: 7553, structure: "range", scenario: "reversal-long" },
+      explain: "Weak break below, bullish engulfing on volume. Long on its close, target the ORB high.",
+    },
+    {
+      id: "r3",
+      type: "replay",
+      tag: "orb",
+      prompt: "First 5-minute close after the ORB. Long, short, or skip?",
+      chart: { seed: 7554, structure: "range", scenario: "failed-up" },
+      explain: "The poke failed but there's no engulfing candle yet. Not a continuation, not yet a reversal. Skip and wait.",
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "orb",
+      prompt: "Where is the entry on the reversal trade?",
+      choices: ["When the wick first pokes out", "On the close of the engulfing candle", "At VWAP", "At PDH"],
+      answer: 1,
+      explain: "The close confirms the engulfing. Entering earlier is guessing.",
+    },
+  ],
+};
+
+// ---------- Generated lessons ----------
+// Practice sets drill a day's concepts in random forms; review sets lean on
+// whatever the student has been getting wrong. Both rebuild every attempt.
+
+const practice = (id: string, title: string, tags: ConceptTag[], n = 8, minutes = 6): Lesson => ({
+  id,
+  title,
+  minutes,
+  exercises: ({ seed }) => practiceSet(seed, tags, n),
+});
+
+const review = (id: string, title: string, tags: ConceptTag[], n = 10, checkpoint = false): Lesson => ({
+  id,
+  title,
+  minutes: 8,
+  checkpoint,
+  exercises: ({ seed, mastery }) => reviewSet(seed, mastery, tags, n),
+});
+
+const W1_TAGS: ConceptTag[] = ["axes", "timeframes", "candle-anatomy", "candle-patterns", "trend", "support-resistance", "retest", "trendlines"];
+const W2_TAGS: ConceptTag[] = [...W1_TAGS, "targets", "process", "risk", "options-basics", "strikes-expiry", "greeks"];
+const W3_TAGS: ConceptTag[] = [...W2_TAGS, "routine", "bias", "key-levels", "orb", "clock"];
+
+const day = (n: number, title: string, lessons: Lesson[]): Unit => ({ id: `day-${n}`, day: n, title, lessons });
+
 export const STAGES: Stage[] = [
   {
-    id: "stage-1",
+    id: "week-1",
     number: 1,
-    title: "Reading charts",
-    blurb: "Axes, timeframes, and knowing what scale you're on.",
-    units: [{ id: "u1", title: "The basics", lessons: [l1_1, l1_2, l1_3] }],
+    title: "Week 1 · Reading the market",
+    blurb: "Charts, candles, trends, levels. About 15 minutes a day.",
+    units: [
+      day(1, "What a chart is", [l1_1, l1_2, practice("d1-practice", "Practice: axes & timeframes", ["axes", "timeframes"], 6)]),
+      day(2, "Candles", [l2_1, l2_2, practice("d2-practice", "Practice: candles", ["candle-anatomy", "candle-patterns"], 8)]),
+      day(3, "Checkpoint", [l1_3, l2_3, review("d3-review", "Review: days 1–2", ["axes", "timeframes", "candle-anatomy", "candle-patterns"])]),
+      day(4, "Trends", [l3_1, practice("d4-practice", "Practice: name the trend", ["trend"], 8), review("d4-review", "Review: so far", ["axes", "timeframes", "candle-anatomy", "candle-patterns", "trend"], 6)]),
+      day(5, "Swings", [l3_2, practice("d5-practice", "Practice: find the swings", ["trend", "trend", "candle-patterns"], 8)]),
+      day(6, "Levels & trendlines", [l3_3, l3_4, practice("d6-practice", "Practice: levels & lines", ["support-resistance", "retest", "trendlines"], 8)]),
+      day(7, "Week 1 checkpoint", [l3_5, review("d7-review", "Week 1 review", W1_TAGS, 12)]),
+    ],
   },
   {
-    id: "stage-2",
+    id: "week-2",
     number: 2,
-    title: "Candles",
-    blurb: "Open, high, low, close, and what wicks tell you.",
-    units: [{ id: "u2", title: "Candlesticks", lessons: [l2_1, l2_2, l2_3] }],
+    title: "Week 2 · Planning the trade & options",
+    blurb: "Targets, discipline, the replay drill, then calls, puts and greeks.",
+    units: [
+      day(8, "The plan", [l4_1, l4_2, practice("d8-practice", "Practice: targets & process", ["targets", "process", "risk"], 8)]),
+      day(9, "Replay", [l4_3, practice("d9-practice", "Practice: make the call", ["process", "trend"], 8), review("d9-review", "Review: structure", ["trend", "support-resistance", "retest", "trendlines", "targets"], 6)]),
+      day(10, "Calls & puts", [l5_1, practice("d10-practice", "Practice: calls & puts", ["options-basics"], 6), review("d10-review", "Review: week 1", W1_TAGS, 6)]),
+      day(11, "Strikes & expiry", [l5_2, practice("d11-practice", "Practice: the lab", ["strikes-expiry", "options-basics"], 6)]),
+      day(12, "Theta & delta", [l5_3, l5_4, practice("d12-practice", "Practice: greeks", ["greeks", "strikes-expiry"], 8)]),
+      day(13, "Options checkpoint", [l5_5, review("d13-review", "Review: options", ["options-basics", "strikes-expiry", "greeks"], 8)]),
+      day(14, "Week 2 checkpoint", [review("d14-review", "Week 2 review", W2_TAGS, 14, true)]),
+    ],
+    premium: true,
   },
   {
-    id: "stage-3",
+    id: "week-3",
     number: 3,
-    title: "Market structure",
-    blurb: "Trends, swings, support and resistance, retests, trendlines.",
-    units: [{ id: "u3", title: "Structure", lessons: [l3_1, l3_2, l3_3, l3_4, l3_5] }],
+    title: "Week 3 · The 0DTE method",
+    blurb: "The morning routine, bias and FTFC, the day's levels, the ORB box, the clock.",
+    units: [
+      day(15, "The routine", [l7_1, practice("d15-practice", "Practice: routine & FTFC", ["routine"], 8), review("d15-review", "Review: the basics", ["trend", "support-resistance", "timeframes"], 6)]),
+      day(16, "Bias", [l7_2, practice("d16-practice", "Practice: read the bias", ["bias", "routine"], 8)]),
+      day(17, "Levels of the day", [l7_3, practice("d17-practice", "Practice: PMH, PDH, ORB, VWAP", ["key-levels", "targets"], 8), review("d17-review", "Review: week 3 so far", ["routine", "bias", "key-levels"], 6)]),
+      day(18, "The first five minutes", [l7_4, practice("d18-practice", "Practice: open drives", ["orb", "key-levels"], 6)]),
+      day(19, "The ORB box", [l7_5, l7_5b, practice("d19-practice", "Practice: real break or fake?", ["orb"], 8)]),
+      day(20, "The clock", [l7_6, practice("d20-practice", "Practice: time of day", ["clock", "orb", "greeks"], 8), review("d20-review", "Review: the method", ["routine", "bias", "key-levels", "orb", "clock"], 8)]),
+      day(21, "Graduation", [l7_7, review("d21-final", "Final: everything", W3_TAGS, 16, true)]),
+    ],
+    premium: true,
   },
   {
-    id: "stage-4",
+    id: "swing",
     number: 4,
-    title: "Trade planning",
-    blurb: "Targets, locking in profit, news, and the no-rush rule.",
-    units: [{ id: "u4", title: "The plan", lessons: [l4_1, l4_2, l4_3] }],
-  },
-  {
-    id: "stage-5",
-    number: 5,
-    title: "Options mechanics",
-    blurb: "Calls, puts, strikes, expiries, and the greeks.",
-    units: [{ id: "u5", title: "Mechanics", lessons: [l5_1, l5_2, l5_3, l5_4, l5_5] }],
-    premium: true,
-  },
-  {
-    id: "stage-6",
-    number: 6,
     title: "Swing options",
-    blurb: "Picking expiry and delta, sizing, managing the trade.",
+    blurb: "Picking a daily setup, expiry and delta, managing the trade. Coming soon.",
     units: [],
-    premium: true,
-  },
-  {
-    id: "stage-7",
-    number: 7,
-    title: "0DTE",
-    blurb: "The morning routine, bias, key levels, the 15-minute ORB, and the clock.",
-    units: [{ id: "u7", title: "The method", lessons: [l7_1, l7_2, l7_3, l7_4, l7_5, l7_6, l7_7] }],
     premium: true,
   },
 ];

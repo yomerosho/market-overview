@@ -43,6 +43,8 @@ export default function Replay({ ex, onAnswer, onNext }: Props) {
       <Candles
         candles={visible}
         intraday={gen.intraday}
+        boxes={gen.boxes}
+        overlays={gen.intraday ? [{ ...gen.overlays[0], points: gen.overlays[0].points.filter((p) => p.time <= visible[visible.length - 1].time) }] : undefined}
         levels={levels}
       />
       {picked === null ? (

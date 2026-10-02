@@ -9,20 +9,39 @@ import Replay from "./exercises/Replay";
 import TapCandle from "./exercises/TapCandle";
 import TapSwings from "./exercises/TapSwings";
 import Teach from "./exercises/Teach";
+import Ftfc from "./exercises/Ftfc";
+import { findLesson } from "@/content/stages";
 import { useProgress } from "@/lib/progress";
-import type { Lesson } from "@/lib/types";
+import type { Exercise, Lesson } from "@/lib/types";
 
 const PASS = 0.7;
 const CHECKPOINT_PASS = 0.85;
 
-export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
+export default function LessonPlayer({ lessonId }: { lessonId: string }) {
   const { progress, loseHeart, recordAnswer, completeLesson } = useProgress();
   const [i, setI] = useState(0);
   const [results, setResults] = useState<boolean[]>([]);
   const [done, setDone] = useState<"passed" | "failed" | "out-of-hearts" | null>(null);
+  const lesson = findLesson(lessonId) as Lesson;
 
-  const graded = useMemo(() => lesson.exercises.filter((e) => e.type !== "teach").length, [lesson]);
-  const ex = lesson.exercises[i];
+  // Generated lessons are built once per attempt, seeded by the clock so a
+  // repeat gives different charts, and shaped by the student's weak spots.
+  const [seed] = useState(() => Date.now());
+  const loaded = progress !== null;
+  const mastery = progress?.mastery;
+  const exercises: Exercise[] = useMemo(
+    () =>
+      typeof lesson.exercises === "function"
+        ? lesson.exercises({ seed, mastery: mastery ?? {} })
+        : lesson.exercises,
+    // Rebuild only once progress has loaded (so mastery is real), not on
+    // every answer, or the set would reshuffle under the student.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lesson, seed, loaded],
+  );
+
+  const graded = useMemo(() => exercises.filter((e) => e.type !== "teach").length, [exercises]);
+  const ex = exercises[i];
   const correctCount = results.filter(Boolean).length;
   const score = graded ? correctCount / graded : 1;
   const threshold = lesson.checkpoint ? CHECKPOINT_PASS : PASS;
@@ -44,7 +63,7 @@ export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
   const next = () => {
     const heartsLeft = (progress?.hearts ?? 1) > 0;
     if (!heartsLeft) return setDone("out-of-hearts");
-    if (i + 1 >= lesson.exercises.length) {
+    if (i + 1 >= exercises.length) {
       return setDone(score >= threshold ? "passed" : "failed");
     }
     setI(i + 1);
@@ -80,7 +99,7 @@ export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
     );
   }
 
-  const pct = (i / lesson.exercises.length) * 100;
+  const pct = (i / exercises.length) * 100;
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4 p-4">
@@ -101,6 +120,7 @@ export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
       {ex.type === "tap-candle" && <TapCandle key={ex.id} ex={ex} onAnswer={onAnswer} onNext={next} />}
       {ex.type === "replay" && <Replay key={ex.id} ex={ex} onAnswer={onAnswer} onNext={next} />}
       {ex.type === "options-lab" && <OptionsLab key={ex.id} ex={ex} onAnswer={onAnswer} onNext={next} />}
+      {ex.type === "ftfc" && <Ftfc key={ex.id} ex={ex} onAnswer={onAnswer} onNext={next} />}
     </div>
   );
 }
