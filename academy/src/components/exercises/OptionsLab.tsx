@@ -21,6 +21,8 @@ function meets(goal: LabGoal, side: "call" | "put", K: number, dte: number) {
       return dte <= goal.max;
     case "premium":
       return premium <= goal.max;
+    case "swing":
+      return dte >= 7 && dte <= 21 && Math.abs(delta) >= 0.5 && Math.abs(delta) <= 0.7;
   }
 }
 

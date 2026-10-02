@@ -26,6 +26,10 @@ const LABELS: Record<string, string> = {
   "key-levels": "Key levels",
   orb: "ORB breakouts",
   clock: "Time of day",
+  regime: "Market regime",
+  "swing-setups": "Swing setups",
+  "swing-entry": "Swing entries & invalidation",
+  "swing-options": "Swing option selection",
 };
 
 export default function Profile() {

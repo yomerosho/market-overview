@@ -1516,6 +1516,473 @@ const W1_TAGS: ConceptTag[] = ["axes", "timeframes", "candle-anatomy", "candle-p
 const W2_TAGS: ConceptTag[] = [...W1_TAGS, "targets", "process", "risk", "options-basics", "strikes-expiry", "greeks"];
 const W3_TAGS: ConceptTag[] = [...W2_TAGS, "routine", "bias", "key-levels", "orb", "clock"];
 
+
+// ---------- Week 4: Swing options ----------
+// From the author's daily-chart setup library. The daily decides whether a
+// setup exists; the 1H/15m only refine the entry; 7–21 DTE, ATM or
+// slightly ITM; and NO TRADE is a valid, common answer.
+
+const l6_1: Lesson = {
+  id: "s6-principles",
+  title: "The swing mindset",
+  minutes: 5,
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "swing-setups",
+      title: "The daily chart decides",
+      body: [
+        "A swing trade holds for one to three weeks, with an option 7 to 21 days out. The daily chart decides whether a setup exists. The 1-hour and 15-minute charts only refine the entry. Intraday noise never overrides a poor daily structure.",
+        "Every setup you take needs, in this order of importance: clear directional structure, defined support and resistance, relative strength, volume confirmation, trend alignment, a defined invalidation, favourable risk/reward, and no range-bound conditions.",
+        "The objective is not the maximum number of trades. It's a small number of liquid stocks with clear direction, clear structure, a reason to keep moving, a defined invalidation, and room to run. When those are absent: NO TRADE.",
+      ],
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "swing-setups",
+      prompt: "A 15-minute chart shows a beautiful bullish pattern. The daily chart is making lower highs and lower lows. The swing is:",
+      choices: ["A long, the 15-minute is clean", "No trade; the daily structure rules", "A short on the 15-minute"],
+      answer: 1,
+      explain: "Daily first, always. Intraday patterns refine entries inside a daily setup; they don't create one.",
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "swing-setups",
+      prompt: "The most important question before any swing trade:",
+      choices: ["How many indicators agree?", "Why should this stock move directionally over the next 1–3 weeks?", "What's the cheapest strike?", "Is RSI oversold?"],
+      answer: 1,
+      explain: "No coherent answer, no trade. A list of ticked indicators is not a thesis.",
+    },
+    {
+      id: "q3",
+      type: "choice",
+      tag: "swing-options",
+      prompt: "Your option window for a swing is:",
+      choices: ["0–2 DTE", "7–21 DTE", "90+ DTE"],
+      answer: 1,
+      explain: "One to three weeks. Long enough for the daily move, short enough that you're not paying for months of time.",
+    },
+    {
+      id: "q4",
+      type: "choice",
+      tag: "swing-setups",
+      prompt: "Every candidate is classified as one of three things:",
+      choices: ["Call, put, or spread", "Breakout, trend pullback, or reversal", "Small, mid, or large cap"],
+      answer: 1,
+      explain: "A, B or C. If it doesn't clearly fit one of the three: no trade.",
+    },
+  ],
+};
+
+const l6_2: Lesson = {
+  id: "s6-regime",
+  title: "Market regime and the range filter",
+  minutes: 6,
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "regime",
+      title: "Check SPY and QQQ before anything else",
+      body: [
+        "Before accepting any setup, classify the broad market. On SPY and QQQ check: price versus the 20 EMA, price versus the 50 SMA, the slope of each, and the swing structure.",
+        "Trending bullish: price above the 20 EMA, 20 EMA above the 50 SMA, 50 SMA rising, higher highs and higher lows. Trending bearish is the mirror. Range: flat averages, price crossing them repeatedly, failed breakouts. Transition: slopes just starting to change, price reclaiming a major average.",
+        "In range or chop, reduce or reject bullish swing setups unless the individual stock shows exceptional relative strength.",
+      ],
+      chart: { seed: 6201, structure: "bull", bars: 120, emas: [20], mas: [50] },
+    },
+    {
+      id: "t2",
+      type: "teach",
+      tag: "regime",
+      title: "The range-bound filter is a hard filter",
+      body: [
+        "Reject or heavily downgrade a setup when: the 20 EMA is flat, the 50 SMA is flat, price keeps crossing them, several recent breakouts failed, price is trapped between obvious support and resistance, ATR is contracting, the daily candles overlap, there's no clear HH/HL or LH/LL, or the reward to the next resistance is too small.",
+        "Do not force a trade. The correct output is: NO TRADE — RANGE.",
+      ],
+      chart: { seed: 6202, structure: "range", bars: 120, emas: [20], mas: [50] },
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "regime",
+      prompt: "This is SPY. What's the regime?",
+      choices: ["Trending bullish", "Trending bearish", "Range / chop"],
+      answer: 1,
+      explain: "Price under both averages, the 20 under the 50, both falling. No bullish swings today.",
+      chart: { seed: 6203, structure: "bear", bars: 120, emas: [20], mas: [50] },
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "regime",
+      prompt: "This is SPY. What's the regime?",
+      choices: ["Trending bullish", "Trending bearish", "Range / chop"],
+      answer: 2,
+      explain: "Flat averages, price slicing through them. Chop. Only an exceptionally strong stock gets through this filter.",
+      chart: { seed: 6204, structure: "range", bars: 120, emas: [20], mas: [50] },
+    },
+    {
+      id: "q3",
+      type: "choice",
+      tag: "regime",
+      prompt: "SPY is in chop. A stock you follow is +3% on a flat market day and closing above resistance on volume. Your call:",
+      choices: ["Reject, the regime filter is absolute", "Consider it: exceptional relative strength is the one exception", "Short it"],
+      answer: 1,
+      explain: "Relative strength is the exception to the chop filter. Still needs a real setup underneath.",
+    },
+  ],
+};
+
+const l6_3: Lesson = {
+  id: "s6-breakout-flag",
+  title: "Setups: breakout + retest, bull flag",
+  minutes: 7,
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "swing-setups",
+      title: "Setup 1: daily breakout + retest",
+      body: [
+        "A clearly identifiable resistance that's been tested several times, or a significant prior swing high. A daily close above it, preferably on above-average volume, with price above the 20 EMA, the 20 EMA above the 50 SMA, and the 50 rising.",
+        "Then the retest: price comes back toward the level, doesn't materially close back below it, selling volume contracts, and a bullish reaction forms near the level.",
+        "Preferred entry: the break above the high of the bullish retest candle. Aggressive: the breakout close. Invalidation: a daily close back below the level, or a break of the retest swing low. Target: next major daily resistance or prior swing high, minimum 2R where it fits.",
+        "Avoid: a breakout immediately followed by a large reversal candle, a climactic-volume breakout that fails right away, or any close back below the level.",
+      ],
+      chart: { seed: 6301, structure: "bull", swing: "breakout-retest" },
+    },
+    {
+      id: "r1",
+      type: "replay",
+      tag: "swing-setups",
+      prompt: "Daily chart, right edge. Swing long, or no trade?",
+      chart: { seed: 6302, structure: "bull", swing: "breakout-retest" },
+      explain: "Close above tested resistance on volume, quiet retest that held, bullish candle at the level. Long on the break of its high.",
+    },
+    {
+      id: "r2",
+      type: "replay",
+      tag: "swing-setups",
+      prompt: "Daily chart, right edge. Swing long, or no trade?",
+      chart: { seed: 6303, structure: "bull", swing: "failed-breakout" },
+      explain: "The breakout was followed by a large reversal candle straight back through the level. That's an avoid, not a retest.",
+    },
+    {
+      id: "t2",
+      type: "teach",
+      tag: "swing-setups",
+      title: "Setup 5: daily bull flag / continuation",
+      body: [
+        "Impulse → consolidation → breakout → continuation. The impulse is a strong directional move, ideally on above-average volume.",
+        "The consolidation is tight, on declining volume, with higher lows or stable support, above the 20 EMA, and it doesn't give back most of the impulse.",
+        "Breakout: a close above the consolidation resistance with volume expansion and a strong daily close. Enter on the breakout or the breakout retest. Invalidation: breakdown through flag support, or a large bearish reversal through the consolidation.",
+        "Avoid: a very wide consolidation, repeated failed breakouts, heavy selling volume, or price below both the 20 EMA and 50 SMA.",
+      ],
+      chart: { seed: 6304, structure: "bull", swing: "bull-flag" },
+    },
+    {
+      id: "r3",
+      type: "replay",
+      tag: "swing-setups",
+      prompt: "Daily chart, right edge. Swing long, or no trade?",
+      chart: { seed: 6305, structure: "bull", swing: "bull-flag" },
+      explain: "Impulse on volume, tight quiet flag with higher lows above the 20 EMA, breakout with a strong close. Long.",
+    },
+    {
+      id: "r4",
+      type: "replay",
+      tag: "swing-setups",
+      prompt: "Daily chart, right edge. Swing long, or no trade?",
+      chart: { seed: 6306, structure: "bull", swing: "range" },
+      explain: "Flat averages, price boxed between support and resistance. NO TRADE — RANGE.",
+    },
+  ],
+};
+
+const l6_4: Lesson = {
+  id: "s6-pullback-reclaim",
+  title: "Setups: 20 EMA pullback, 50 SMA reclaim, prior-week high",
+  minutes: 7,
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "swing-setups",
+      title: "Setup 2: 20 EMA trend pullback",
+      body: [
+        "An established uptrend: price above the 20 EMA, the 20 above the 50 SMA, the 50 rising, higher highs and higher lows. Then a pullback toward the 20 EMA on declining volume, reaching the average or nearby support.",
+        "Confirmation: a bullish reversal candle (hammer, bullish engulfing), a strong close near the candle's high, a higher low, a reclaim of short-term resistance.",
+        "Entry: break above the high of the reversal candle. Invalidation: break of the recent swing low, or a sustained close below the 20 EMA. Target: prior swing high, a new high, the next daily resistance, 2R preferred.",
+      ],
+      chart: { seed: 6401, structure: "bull", swing: "ema-pullback" },
+    },
+    {
+      id: "r1",
+      type: "replay",
+      tag: "swing-setups",
+      prompt: "Daily chart, right edge. Swing long, or no trade?",
+      chart: { seed: 6402, structure: "bull", swing: "ema-pullback" },
+      explain: "Uptrend, orderly pullback into the 20 EMA on fading volume, reversal candle closing near its high. Long on the break of that high.",
+    },
+    {
+      id: "t2",
+      type: "teach",
+      tag: "swing-setups",
+      title: "Setup 3: 50 SMA reclaim",
+      body: [
+        "A stock moving from bearish or neutral into a potential uptrend. Price was below the 50 SMA, builds a base, closes above the 50 SMA on rising volume, then holds the 50 SMA as support.",
+        "The structure you want: base → reclaim → pullback → the 50 holds → higher low → continuation. Enter when the higher low is confirmed and short-term resistance breaks.",
+        "Avoid: buying just because price crossed the 50, an immediate rejection from it, a flat or choppy 50 SMA, or several recent failed reclaims. Invalidation: a daily close back below the 50 SMA together with loss of the recent swing low.",
+      ],
+      chart: { seed: 6403, structure: "bull", swing: "sma50-reclaim" },
+    },
+    {
+      id: "r2",
+      type: "replay",
+      tag: "swing-setups",
+      prompt: "Daily chart, right edge. Swing long, or no trade?",
+      chart: { seed: 6404, structure: "bull", swing: "sma50-reclaim" },
+      explain: "Downtrend, base, reclaim of the 50 on volume, pullback held it, higher low breaking short-term resistance. Long.",
+    },
+    {
+      id: "t3",
+      type: "teach",
+      tag: "swing-setups",
+      title: "Setup 4: previous week high break",
+      body: [
+        "A trending stock consolidating just under the previous week's high, without excessive volatility, then breaking through it. Prefer above-average volume, a strong daily close, relative strength versus SPY/QQQ, and price above the 20 EMA.",
+        "Preferred entry: the breakout followed by a short-term pullback that holds. Use the 1-hour and 15-minute to find the breakout, the pullback, the higher low, and the continuation.",
+        "Invalidation: a failed breakout, or price falling back below the previous week's high and not reclaiming it. Target: next daily resistance, prior major swing high, or a measured move.",
+      ],
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "swing-setups",
+      prompt: "Price crosses above the 50 SMA today for the first time in months. The 50 SMA is flat. You:",
+      choices: ["Buy, it reclaimed", "Wait for the base → reclaim → pullback-that-holds → higher low sequence; a flat 50 is an avoid", "Short the rejection"],
+      answer: 1,
+      explain: "The cross is the beginning of the story, not the entry. And a flat 50 SMA is on the avoid list.",
+    },
+  ],
+};
+
+const l6_5: Lesson = {
+  id: "s6-confirmations",
+  title: "Confirmations: AVWAP, RSI divergence, relative strength",
+  minutes: 6,
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "swing-setups",
+      title: "Setup 6: anchored VWAP reclaim",
+      body: [
+        "Anchor a VWAP from a significant event: earnings, a major breakout or gap, a significant swing high or low, a big news candle. The bullish structure is: price below the AVWAP → base → reclaim → pullback → AVWAP holds → continuation.",
+        "Prefer rising volume, a higher low, price above the 20 EMA, relative strength, and the AVWAP acting as support after the reclaim. Enter after the reclaim, the successful retest, and a short-term continuation confirmation. Invalidation: a sustained move back below the AVWAP, or loss of the retest swing low.",
+      ],
+    },
+    {
+      id: "t2",
+      type: "teach",
+      tag: "swing-setups",
+      title: "Setup 7: RSI bullish divergence at support",
+      body: [
+        "Price makes a lower low while RSI makes a higher low. On its own that means nothing. It matters only when price is approaching meaningful daily support: a prior swing low, major horizontal support, the 50 or 200 SMA, an anchored VWAP, or a major demand zone.",
+        "Never enter because RSI is oversold. Require price confirmation: a bullish reversal candle, a higher low, a moving-average reclaim, a break of short-term resistance, or volume expansion. Invalidation: a break below the support or swing low. Target: first major resistance, a moving average, or the prior swing high.",
+      ],
+    },
+    {
+      id: "t3",
+      type: "teach",
+      tag: "swing-setups",
+      title: "Setup 8: relative strength",
+      body: [
+        "Compare the stock to its benchmark: SPY for broad-market names, QQQ for tech and growth, IWM for small caps, or a sector ETF. Stock +3.0% on a day the benchmark is +0.5% is +2.5% relative strength.",
+        "Prefer stocks that outperform, hold HH/HL, hold support during market weakness, and break resistance while the benchmark is flat or weak, with volume expansion.",
+        "Relative strength is a confirmation factor, never a standalone entry. Combine it with a breakout, pullback, bull flag, prior-week-high break or 50 SMA reclaim, and use that setup's invalidation.",
+      ],
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "swing-setups",
+      prompt: "Stock +1.8%, QQQ −0.4%. Relative strength:",
+      choices: ["+1.4%", "+2.2%", "−2.2%", "+0.4%"],
+      answer: 1,
+      explain: "1.8 − (−0.4) = +2.2%. Strong on a down day: exactly what you want.",
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "swing-setups",
+      prompt: "RSI shows bullish divergence but price is in the middle of nowhere, far from any daily support. The setup is:",
+      choices: ["Valid, divergence is enough", "Not valid; divergence only counts near meaningful daily support, and still needs price confirmation", "A short"],
+      answer: 1,
+      explain: "Divergence plus support plus confirmation. Any one alone is not a trade.",
+    },
+    {
+      id: "q3",
+      type: "choice",
+      tag: "swing-setups",
+      prompt: "Which of these is a standalone entry signal?",
+      choices: ["Relative strength", "RSI oversold", "A 50 SMA cross", "None of them"],
+      answer: 3,
+      explain: "All three are confirmations or beginnings. The entry comes from the setup's structure.",
+    },
+  ],
+};
+
+const l6_6: Lesson = {
+  id: "s6-workflow",
+  title: "Workflow, invalidation and the option",
+  minutes: 7,
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "swing-entry",
+      title: "Daily → classify → invalidation → 1H → 15m → option",
+      body: [
+        "Step 1, daily: regime, stock trend, structure, support, resistance, relative strength, volume, setup type. Step 2: classify as breakout, trend pullback, or reversal; no fit, no trade.",
+        "Step 3: before you look at any option, write down the exact underlying price that invalidates the setup.",
+        "Step 4, 1-hour: refine the entry with a higher low, a VWAP or 20 EMA reclaim, a local resistance break, volume expansion, a continuation pattern. Step 5, 15-minute: execution timing only. A 15-minute bullish pattern never overrides a bearish daily.",
+      ],
+    },
+    {
+      id: "t2",
+      type: "teach",
+      tag: "swing-options",
+      title: "Step 6: the option",
+      body: [
+        "7 to 21 DTE. Strike at the money or slightly in the money; avoid unnecessarily far OTM contracts. The contract needs adequate liquidity, a tight bid/ask spread, good open interest, sufficient delta, and a premium that isn't excessive relative to the expected underlying move.",
+        "Evaluate the expected move before picking the strike. If the move can't pay for the premium, there's no trade in the option even if there's one in the stock.",
+        "Then score it: daily trend, structure, setup quality, regime, relative strength, volume, support/resistance, entry quality, risk/reward, range risk. Output: TRADE, WAIT, or NO TRADE, with one concise reason.",
+      ],
+    },
+    {
+      id: "lab1",
+      type: "options-lab",
+      tag: "swing-options",
+      prompt: "Set up the swing shape: 7–21 days out, ATM or slightly ITM (delta 0.50–0.70).",
+      side: "call",
+      goal: { metric: "swing" },
+      explain: "A couple of weeks, near the money. Enough delta to track the stock, not so much time that theta is the whole story.",
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "swing-entry",
+      prompt: "You've found a clean breakout + retest. The next step before choosing a contract is:",
+      choices: ["Pick the expiry", "Write down the exact invalidation price", "Check the 1-minute chart", "Buy the breakout"],
+      answer: 1,
+      explain: "Invalidation first. The option is step six.",
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "swing-options",
+      prompt: "The stock's expected move over 2 weeks is about $2. The ATM call costs $3.50. Setup status:",
+      choices: ["TRADE", "WAIT or NO TRADE: premium is excessive relative to the expected move", "TRADE with double size"],
+      answer: 1,
+      explain: "If the expected move can't cover the premium, the option can't win even when the chart does.",
+    },
+    {
+      id: "q3",
+      type: "choice",
+      tag: "swing-entry",
+      prompt: "Your daily setup is valid but the 1-hour hasn't printed a higher low yet. Status:",
+      choices: ["TRADE now", "WAIT for the 1H confirmation", "NO TRADE forever"],
+      answer: 1,
+      explain: "The daily says there's a setup; the 1H says not yet. WAIT is a real answer.",
+    },
+  ],
+};
+
+const l6_7: Lesson = {
+  id: "s6-checkpoint",
+  title: "Checkpoint: Swing options",
+  minutes: 8,
+  checkpoint: true,
+  exercises: [
+    {
+      id: "q1",
+      type: "choice",
+      tag: "regime",
+      prompt: "This is SPY. What's the regime?",
+      choices: ["Trending bullish", "Trending bearish", "Range / chop"],
+      answer: 0,
+      explain: "Above the 20, 20 over 50, 50 rising, HH/HL. Bullish swings allowed.",
+      chart: { seed: 6701, structure: "bull", bars: 120, emas: [20], mas: [50] },
+    },
+    {
+      id: "r1",
+      type: "replay",
+      tag: "swing-setups",
+      prompt: "Daily chart, right edge. Swing long, or no trade?",
+      chart: { seed: 6702, structure: "bull", swing: "ema-pullback" },
+      explain: "20 EMA pullback with a reversal candle. Long on the break of its high.",
+    },
+    {
+      id: "r2",
+      type: "replay",
+      tag: "swing-setups",
+      prompt: "Daily chart, right edge. Swing long, or no trade?",
+      chart: { seed: 6703, structure: "bull", swing: "range" },
+      explain: "NO TRADE — RANGE.",
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "swing-entry",
+      prompt: "Invalidation for a breakout + retest:",
+      choices: ["A daily close back below the level, or a break of the retest swing low", "RSI under 50", "Any red candle", "The 15-minute turning bearish"],
+      answer: 0,
+      explain: "Defined before the option, on the daily.",
+    },
+    {
+      id: "r3",
+      type: "replay",
+      tag: "swing-setups",
+      prompt: "Daily chart, right edge. Swing long, or no trade?",
+      chart: { seed: 6704, structure: "bull", swing: "failed-breakout" },
+      explain: "Large reversal candle through the level right after the breakout. Avoid.",
+    },
+    {
+      id: "lab1",
+      type: "options-lab",
+      tag: "swing-options",
+      prompt: "Set up the swing shape: 7–21 days out, ATM or slightly ITM (delta 0.50–0.70).",
+      side: "put",
+      goal: { metric: "swing" },
+      explain: "Near the money, one to three weeks.",
+    },
+    {
+      id: "q3",
+      type: "choice",
+      tag: "swing-setups",
+      prompt: "Stock +0.2%, SPY +2.5%. The stock is:",
+      choices: ["Showing relative strength", "Showing relative weakness (−2.3%)", "Neutral"],
+      answer: 1,
+      explain: "Lagging a strong market by 2.3%. Not a swing-long candidate on strength.",
+    },
+    {
+      id: "r4",
+      type: "replay",
+      tag: "swing-setups",
+      prompt: "Daily chart, right edge. Swing long, or no trade?",
+      chart: { seed: 6705, structure: "bull", swing: "bull-flag" },
+      explain: "Impulse, tight flag, breakout with a strong close. Long.",
+    },
+  ],
+};
+
+const W4_TAGS: ConceptTag[] = ["regime", "swing-setups", "swing-entry", "swing-options", "trend", "support-resistance", "greeks", "targets"];
+
 const day = (n: number, title: string, lessons: Lesson[]): Unit => ({ id: `day-${n}`, day: n, title, lessons });
 
 export const STAGES: Stage[] = [
@@ -1567,11 +2034,19 @@ export const STAGES: Stage[] = [
     premium: true,
   },
   {
-    id: "swing",
+    id: "week-4",
     number: 4,
-    title: "Swing options",
-    blurb: "Picking a daily setup, expiry and delta, managing the trade. Coming soon.",
-    units: [],
+    title: "Week 4 · Swing options",
+    blurb: "The daily-chart setup library: regime, the eight setups, invalidation, and the 7–21 DTE contract.",
+    units: [
+      day(22, "The swing mindset", [l6_1, practice("d22-practice", "Practice: principles", ["swing-setups", "swing-options"], 6)]),
+      day(23, "Regime", [l6_2, practice("d23-practice", "Practice: name the regime", ["regime"], 8), review("d23-review", "Review: structure & MAs", ["trend", "bias", "support-resistance"], 6)]),
+      day(24, "Breakouts & flags", [l6_3, practice("d24-practice", "Practice: long or no trade?", ["swing-setups"], 8)]),
+      day(25, "Pullbacks & reclaims", [l6_4, practice("d25-practice", "Practice: name the setup", ["swing-setups", "swing-entry"], 8), review("d25-review", "Review: this week", ["regime", "swing-setups"], 6)]),
+      day(26, "Confirmations", [l6_5, practice("d26-practice", "Practice: confirmations", ["swing-setups", "regime"], 8)]),
+      day(27, "Workflow & the option", [l6_6, practice("d27-practice", "Practice: invalidation & contracts", ["swing-entry", "swing-options", "greeks"], 8), review("d27-review", "Review: the library", W4_TAGS, 8)]),
+      day(28, "Graduation", [l6_7, review("d28-final", "Final: swing options", W4_TAGS, 14, true)]),
+    ],
     premium: true,
   },
 ];

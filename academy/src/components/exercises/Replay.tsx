@@ -29,6 +29,11 @@ export default function Replay({ ex, onAnswer, onNext }: Props) {
 
   const visible = useMemo(() => gen.candles.slice(0, shown), [gen, shown]);
   const entry = gen.candles[reveal - 1].close;
+  // Overlays (VWAP, moving averages) are clipped to the bars shown so far.
+  const overlays = useMemo(() => {
+    const until = visible[visible.length - 1].time;
+    return gen.overlays.map((o) => ({ ...o, points: o.points.filter((p) => p.time <= until) }));
+  }, [gen.overlays, visible]);
   const levels = useMemo(
     () => (picked ? [...gen.levels, { label: "entry", price: entry, color: "#60a5fa" }] : gen.levels),
     [gen.levels, picked, entry],
@@ -44,7 +49,7 @@ export default function Replay({ ex, onAnswer, onNext }: Props) {
         candles={visible}
         intraday={gen.intraday}
         boxes={gen.boxes}
-        overlays={gen.intraday ? [{ ...gen.overlays[0], points: gen.overlays[0].points.filter((p) => p.time <= visible[visible.length - 1].time) }] : undefined}
+        overlays={overlays}
         levels={levels}
       />
       {picked === null ? (

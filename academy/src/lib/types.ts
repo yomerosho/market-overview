@@ -28,6 +28,14 @@ export type IntradayScenario =
   | "reversal-long" // failed-down, then a bullish engulfing candle: long to the ORB high
   | "chop"; // never leaves the ORB
 
+export type SwingScenario =
+  | "breakout-retest"
+  | "ema-pullback"
+  | "bull-flag"
+  | "sma50-reclaim"
+  | "failed-breakout"
+  | "range";
+
 export type ChartSpec = {
   seed: number;
   /** Daily chart with a given structure. Ignored when `scenario` is set. */
@@ -39,6 +47,10 @@ export type ChartSpec = {
   showLevels?: boolean;
   /** Overlay simple moving averages of these lengths on a daily chart. */
   mas?: number[];
+  /** Overlay exponential moving averages of these lengths on a daily chart. */
+  emas?: number[];
+  /** A scripted daily swing setup instead of a plain structure. */
+  swing?: SwingScenario;
 };
 
 /** A labelled horizontal level drawn on the chart. */
@@ -70,7 +82,11 @@ export type ConceptTag =
   | "bias"
   | "key-levels"
   | "orb"
-  | "clock";
+  | "clock"
+  | "regime"
+  | "swing-setups"
+  | "swing-entry"
+  | "swing-options";
 
 type Base = { id: string; tag: ConceptTag };
 
@@ -137,7 +153,9 @@ export type LabGoal =
   | { metric: "delta"; min: number; max: number }
   | { metric: "moneyness"; value: "itm" | "otm" }
   | { metric: "dte"; max: number }
-  | { metric: "premium"; max: number };
+  | { metric: "premium"; max: number }
+  /** The swing shape: 7–21 DTE, ATM or slightly ITM (|delta| 0.5–0.7). */
+  | { metric: "swing" };
 
 /** Interactive options pricer with a goal the student has to hit. */
 export type OptionsLabExercise = Base & {

@@ -14,6 +14,7 @@ import type {
   OptionsLabExercise,
   ReplayExercise,
   Structure,
+  SwingScenario,
   TapCandleExercise,
   TapSwingsExercise,
   Timeframe,
@@ -184,6 +185,55 @@ const POOLS: Partial<Record<ConceptTag, Q[]>> = {
     { prompt: "Price has run from the ORB to just under PDH. A friend wants to buy here. That's:", choices: ["Fine, it's strong", "Chasing the top; the entry was at the break, the target is here", "A reversal trade", "A 0DTE rule"], answer: 1, explain: "Don't buy at the top. By the time price is at the target, the trade is ending, not starting." },
     { prompt: "What makes an ORB break trustworthy?", choices: ["Volume on the breakout candle and a close beyond the level", "The colour of the candle", "The time being after lunch", "A tweet"], answer: 0, explain: "Volume plus a close. Without those, assume it can fail." },
   ],
+  regime: [
+    { prompt: "SPY: price above the 20 EMA, 20 EMA above the 50 SMA, 50 SMA rising, higher highs and higher lows. Regime:", choices: ["Trending bullish", "Trending bearish", "Range / chop", "Transition"], answer: 0, explain: "All four boxes ticked. Bullish swing setups are allowed." },
+    { prompt: "SPY: flat 20 EMA, flat 50 SMA, price crossing both repeatedly, several failed breakouts. Regime:", choices: ["Trending bullish", "Trending bearish", "Range / chop", "Transition"], answer: 2, explain: "Chop. Reduce or reject bullish setups unless the stock shows exceptional relative strength." },
+    { prompt: "The moving averages are just starting to change slope and price is reclaiming the 50 SMA. Regime:", choices: ["Trending bullish", "Range / chop", "Transition", "Trending bearish"], answer: 2, explain: "Transition: structure forming, not confirmed. Smaller size, more patience." },
+    { prompt: "Which two tickers set the market regime for most swing setups?", choices: ["SPY and QQQ", "AAPL and TSLA", "GLD and TLT", "VIX and DXY"], answer: 0, explain: "SPY for the broad market, QQQ for tech/growth. IWM for small caps when relevant." },
+    { prompt: "Before accepting ANY swing setup you must first:", choices: ["Check the 15-minute chart", "Determine the broader market regime", "Pick a strike", "Check RSI"], answer: 1, explain: "Regime first. A great chart in a chop regime is still a downgrade." },
+    { prompt: "The range-bound filter is:", choices: ["A suggestion", "A hard filter: NO TRADE — RANGE", "Only for small caps", "Optional on Fridays"], answer: 1, explain: "Hard filter. Do not force a trade." },
+    { prompt: "Which is a range-bound warning sign?", choices: ["ATR contracting sharply and overlapping daily candles", "50 SMA rising", "Volume expanding on a breakout", "Higher highs and higher lows"], answer: 0, explain: "Contracting ATR, overlapping candles, flat averages, repeated failed breakouts: range." },
+    { prompt: "The market is in chop but a stock is up +3% while SPY is flat and breaking resistance. The setup is:", choices: ["Rejected automatically", "Allowed: exceptional relative strength is the exception to the chop filter", "Only tradeable on 0DTE"], answer: 1, explain: "Exceptional relative strength can override a chop regime. Nothing else does." },
+  ],
+  "swing-setups": [
+    { prompt: "Which chart decides whether a swing setup exists?", choices: ["The 15-minute", "The 1-hour", "The daily", "The weekly only"], answer: 2, explain: "The daily determines the setup. 1H/15m only refine the entry." },
+    { prompt: "Every candidate must be classified as one of:", choices: ["Breakout, trend pullback, or reversal", "Long or short", "Call or put", "Gap up or gap down"], answer: 0, explain: "A, B or C. If it doesn't clearly fit one: NO TRADE." },
+    { prompt: "Breakout + retest: what must the daily candle do first?", choices: ["Wick above resistance", "Close above a clearly established resistance, ideally on above-average volume", "Touch the 200 SMA", "Gap"], answer: 1, explain: "A close above, on volume. Then wait for the retest." },
+    { prompt: "During a healthy retest of broken resistance, selling volume should:", choices: ["Expand", "Contract", "Be irrelevant", "Double"], answer: 1, explain: "Light volume on the retest means sellers aren't pressing. Then a bullish reaction near the level." },
+    { prompt: "The 20 EMA pullback setup needs:", choices: ["Price below the 20 EMA for a week", "An established HH/HL uptrend, 20 EMA above 50 SMA, a pullback to the 20 EMA on declining volume", "A gap down", "RSI under 30"], answer: 1, explain: "Trend intact, pullback orderly, volume fading into the average." },
+    { prompt: "Which confirmation fits the 20 EMA pullback?", choices: ["A hammer or bullish engulfing candle at the EMA, closing near its high", "Three red candles in a row", "A close below the 50 SMA", "Flat volume"], answer: 0, explain: "A reversal candle at the average, strong close, then break its high." },
+    { prompt: "50 SMA reclaim: the mistake to avoid is:", choices: ["Waiting for a pullback", "Buying simply because price crossed the 50 SMA", "Checking volume", "Looking for a higher low"], answer: 1, explain: "The cross is the start. You want base → reclaim → pullback that holds → higher low → continuation." },
+    { prompt: "A bull flag consolidation should:", choices: ["Retrace most of the impulse", "Be tight, with declining volume, higher lows, and stay above the 20 EMA", "Be as wide as possible", "Show heavy selling volume"], answer: 1, explain: "Tight and quiet. Wide, heavy-volume flags are not flags." },
+    { prompt: "The previous-week-high break setup wants:", choices: ["A stock in a bear trend", "A trending stock consolidating just under last week's high, then breaking it on volume with a strong close", "A gap below last week's low", "RSI divergence"], answer: 1, explain: "Trend, tight consolidation under the level, break with volume and relative strength." },
+    { prompt: "Anchored VWAP can be anchored from:", choices: ["Any random bar", "A significant event: earnings, major gap, major swing high/low, big news candle", "Only the year open", "The last 5-minute candle"], answer: 1, explain: "Anchor where something happened. The reclaim and hold is the setup." },
+    { prompt: "RSI bullish divergence means:", choices: ["Price higher high, RSI higher high", "Price lower low, RSI higher low", "RSI under 30", "RSI over 70"], answer: 1, explain: "Price keeps falling, momentum doesn't. Only matters near meaningful daily support, and never enter on RSI alone." },
+    { prompt: "Stock +3.0%, benchmark +0.5%. Relative strength:", choices: ["+3.5%", "+2.5%", "+0.5%", "-2.5%"], answer: 1, explain: "3.0 − 0.5 = +2.5%. Strong." },
+    { prompt: "Relative strength is:", choices: ["A standalone entry signal", "A confirmation factor combined with one of the primary setups", "Only for ETFs", "Irrelevant for swings"], answer: 1, explain: "Confirmation, not entry. Pair it with a breakout, pullback, flag, prior-week-high break or 50 SMA reclaim." },
+    { prompt: "A breakout on extremely high volume that fails the very next day is:", choices: ["A buy", "An avoid; exhaustion, not strength", "A pullback", "A flag"], answer: 1, explain: "Climactic volume followed by immediate failure is an avoid." },
+    { prompt: "The most important question for any swing candidate is:", choices: ["How many indicators agree?", "Why should this stock move directionally over the next 1–3 weeks?", "What's the premium?", "Is RSI oversold?"], answer: 1, explain: "No clear answer, no trade. Indicator counting is not a thesis." },
+  ],
+  "swing-entry": [
+    { prompt: "Preferred entry on a breakout + retest:", choices: ["The breakout close", "The break above the high of the bullish retest candle", "The next morning's open", "Any time"], answer: 1, explain: "Preferred: break of the retest candle's high. Aggressive: the breakout close." },
+    { prompt: "Invalidation for a breakout + retest is:", choices: ["A 2% drop", "A daily close back below the former resistance, or a break of the retest swing low", "Any red candle", "RSI under 50"], answer: 1, explain: "Define it before the option. If it's hit, the thesis is wrong." },
+    { prompt: "Before you even look at an option, you must determine:", choices: ["The strike", "The exact underlying price that invalidates the setup", "The expiry", "The bid/ask"], answer: 1, explain: "Step 3 of the workflow. Invalidation first." },
+    { prompt: "The 15-minute chart is for:", choices: ["Deciding whether the setup exists", "Execution timing only", "Overriding the daily", "Setting the target"], answer: 1, explain: "15m times the entry. It never overrides a poor daily structure." },
+    { prompt: "A bullish 15-minute pattern against a bearish daily structure is:", choices: ["A long", "Noise; the daily rules", "A short", "A flag"], answer: 1, explain: "Do not allow intraday noise to override the daily." },
+    { prompt: "On the 1-hour chart, entry refinement looks for:", choices: ["A higher low, VWAP or 20 EMA reclaim, a local resistance break, volume expansion", "RSI over 70", "The 200 SMA", "A gap"], answer: 0, explain: "The 1H confirms the turn inside the daily setup." },
+    { prompt: "Minimum reward-to-risk to prefer:", choices: ["1R", "2R where structure permits", "10R", "There is no minimum"], answer: 1, explain: "Target the next major daily resistance or prior swing high; prefer at least 2R." },
+    { prompt: "The target for a 20 EMA pullback long:", choices: ["The 20 EMA", "Prior swing high / new high / next daily resistance", "Yesterday's low", "The strike"], answer: 1, explain: "Back to the prior high, then the next level." },
+    { prompt: "Invalidation for a 50 SMA reclaim:", choices: ["Any close below the 20 EMA", "A daily close back below the 50 SMA combined with loss of the recent swing low", "A red day", "RSI under 40"], answer: 1, explain: "Both: back under the average and the swing low gone." },
+    { prompt: "Workflow order:", choices: ["15m → 1H → daily", "Daily → classify setup → invalidation → 1H → 15m → option", "Option → daily → 15m", "Regime → option → daily"], answer: 1, explain: "Daily decides, then classify, then invalidation, then refine down, then pick the option last." },
+  ],
+  "swing-options": [
+    { prompt: "Preferred expiry window for a swing:", choices: ["0–2 DTE", "7–21 DTE", "60–90 DTE", "LEAPS"], answer: 1, explain: "One to three weeks. Enough time for the daily move, not so much you pay for it." },
+    { prompt: "Preferred strikes for a swing:", choices: ["Far OTM for leverage", "ATM or slightly ITM", "Deep ITM only", "Whatever's cheapest"], answer: 1, explain: "ATM / slightly ITM. Avoid unnecessarily far OTM contracts." },
+    { prompt: "Which option is the swing shape?", choices: ["0.15 delta, 3 DTE", "0.55 delta, 14 DTE", "0.90 delta, 120 DTE", "0.20 delta, 45 DTE"], answer: 1, explain: "Near the money, a couple of weeks out." },
+    { prompt: "The option should have:", choices: ["A wide bid/ask spread", "Adequate liquidity, tight spread, good open interest, sufficient delta", "No open interest", "Maximum premium"], answer: 1, explain: "You need to get in and out at a fair price." },
+    { prompt: "Before selecting the strike you must evaluate:", choices: ["The expected underlying move", "The colour of the candle", "The time of day", "The VIX"], answer: 0, explain: "Expected move first. The strike and premium have to make sense against it." },
+    { prompt: "A $2 premium on a stock you expect to move $1.50 is:", choices: ["Fine", "Excessive premium relative to the expected move; avoid", "A great deal", "Standard"], answer: 1, explain: "If the move can't pay for the premium, the trade can't work." },
+    { prompt: "The objective of the swing library is:", choices: ["The maximum number of trades", "A small number of liquid stocks with clear direction, structure, invalidation and room", "One trade per day", "Beating 0DTE"], answer: 1, explain: "Few, clean, liquid. When those conditions are absent: NO TRADE." },
+    { prompt: "Setup status options are:", choices: ["Buy / Sell", "TRADE / WAIT / NO TRADE", "Long / Short / Hedge", "Yes / No"], answer: 1, explain: "Three outcomes, and WAIT is common." },
+  ],
   clock: [
     { prompt: "It's 11:15 CST. You see something that looks like a setup. You:", choices: ["Take it", "Leave it; the morning window is closed and midday is chop", "Take it with 0DTE"], answer: 1, explain: "Be done by 10:30. Next look is 1:00 to 2:00." },
     { prompt: "It's 2:30 CST and you want to trade a clean afternoon breakout. Which expiry?", choices: ["0DTE", "1 or 2 DTE", "30 DTE", "Doesn't matter"], answer: 1, explain: "After 2:00 a 0DTE is melting too fast." },
@@ -267,6 +317,42 @@ export function openDriveReplay(r: R, id: string): ReplayExercise {
   return { id, type: "replay", tag: "orb", prompt: ORB_PROMPT[sc], chart: { seed: r.int(1e6), structure: "range", scenario: sc }, explain: sc === "chop" ? "First candle still inside the premarket range. Nothing confirmed; wait for the ORB." : ORB_EXPLAIN[sc] };
 }
 
+const SWING_SCENARIOS: SwingScenario[] = ["breakout-retest", "ema-pullback", "bull-flag", "sma50-reclaim", "failed-breakout", "range"];
+const SWING_EXPLAIN: Record<SwingScenario, string> = {
+  "breakout-retest": "Daily close above a tested resistance on volume, a quiet retest that held, then a bullish candle at the level. Long on the break of its high; invalidation is a close back below the level.",
+  "ema-pullback": "Uptrend with higher lows, an orderly pullback to the 20 EMA on fading volume, then a reversal candle closing near its high. Long on the break of that high.",
+  "bull-flag": "Strong impulse on volume, a tight consolidation with higher lows and declining volume above the 20 EMA, then a breakout with a strong close. Long.",
+  "sma50-reclaim": "Downtrend, base, reclaim of the 50 SMA on volume, a pullback that held it, and a higher low breaking short-term resistance. Long.",
+  "failed-breakout": "The breakout close was followed by a large reversal candle back through the level. That's an avoid. Skip.",
+  range: "Flat averages, price trapped between obvious support and resistance, overlapping candles. NO TRADE — RANGE.",
+};
+const SWING_PROMPT: Record<SwingScenario, string> = {
+  "breakout-retest": "Daily chart, right edge. Is this a swing long, or no trade?",
+  "ema-pullback": "Daily chart, right edge. Swing long, or no trade?",
+  "bull-flag": "Daily chart, right edge. Swing long, or no trade?",
+  "sma50-reclaim": "Daily chart, right edge. Swing long, or no trade?",
+  "failed-breakout": "Daily chart, right edge. Swing long, or no trade?",
+  range: "Daily chart, right edge. Swing long, or no trade?",
+};
+
+export function swingReplay(r: R, id: string, scenario?: SwingScenario): ReplayExercise {
+  const sc = scenario ?? r.pick(SWING_SCENARIOS);
+  return { id, type: "replay", tag: "swing-setups", prompt: SWING_PROMPT[sc], chart: { seed: r.int(1e6), structure: "bull", swing: sc }, explain: SWING_EXPLAIN[sc] };
+}
+
+/** Name the setup on a daily chart. */
+export function nameSetupDrill(r: R, id: string): ChoiceExercise {
+  const sc = r.pick(["breakout-retest", "ema-pullback", "bull-flag", "sma50-reclaim"] as const);
+  const names = { "breakout-retest": "Breakout + retest", "ema-pullback": "20 EMA trend pullback", "bull-flag": "Bull flag / continuation", "sma50-reclaim": "50 SMA reclaim" };
+  const choices = ["Breakout + retest", "20 EMA trend pullback", "Bull flag / continuation", "50 SMA reclaim"];
+  return { id, type: "choice", tag: "swing-setups", prompt: "Which setup is this?", choices, answer: choices.indexOf(names[sc]), explain: SWING_EXPLAIN[sc], chart: { seed: r.int(1e6), structure: "bull", swing: sc } };
+}
+
+export function regimeDrill(r: R, id: string): ChoiceExercise {
+  const s = r.pick(["bull", "bear", "range"] as const);
+  return { id, type: "choice", tag: "regime", prompt: "This is SPY. What's the regime?", choices: ["Trending bullish", "Trending bearish", "Range / chop"], answer: { bull: 0, bear: 1, range: 2 }[s], explain: { bull: "Price above the 20 EMA, 20 over 50, 50 rising, HH/HL. Bullish setups allowed.", bear: "Price under both, 20 under 50, 50 falling, LH/LL. No bullish swings.", range: "Flat averages, price crossing them repeatedly. Chop: reject unless exceptional relative strength." }[s], chart: { seed: r.int(1e6), structure: s, bars: 120, emas: [20], mas: [50] } };
+}
+
 export function biasDrill(r: R, id: string): ChoiceExercise {
   const s = r.pick(["bull", "bear", "range"] as const);
   return { id, type: "choice", tag: "bias", prompt: "What's the bias on this chart?", choices: ["Bullish", "Bearish", "No bias"], answer: { bull: 0, bear: 1, range: 2 }[s], explain: { bull: "Price above stacked-up averages. Lean long.", bear: "Price under stacked-down averages. Lean short.", range: "Price tangled in the averages. No bias; be careful." }[s], chart: { seed: r.int(1e6), structure: s, bars: 120, mas: [9, 21, 50] } };
@@ -320,6 +406,10 @@ export function drillFor(r: R, tag: ConceptTag, id: string): Exercise | null {
     "key-levels": [() => choiceFrom(r, tag, id)],
     orb: [() => orbReplay(r, id), () => orbReplay(r, id), () => choiceFrom(r, tag, id)],
     clock: [() => choiceFrom(r, tag, id)],
+    regime: [() => regimeDrill(r, id), () => choiceFrom(r, tag, id)],
+    "swing-setups": [() => swingReplay(r, id), () => nameSetupDrill(r, id), () => choiceFrom(r, tag, id)],
+    "swing-entry": [() => choiceFrom(r, tag, id), () => swingReplay(r, id)],
+    "swing-options": [() => choiceFrom(r, tag, id), () => ({ id, type: "options-lab", tag: "swing-options", prompt: "Set up the swing shape: 7–21 days out, ATM or slightly ITM (delta 0.50–0.70).", side: r.pick(["call", "put"] as const), goal: { metric: "swing" }, explain: "One to three weeks, near the money. That's the swing contract." }) as OptionsLabExercise],
   };
   return r.pick(forms[tag])();
 }
