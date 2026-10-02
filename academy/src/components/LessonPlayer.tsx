@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import Choice from "./exercises/Choice";
 import Classify from "./exercises/Classify";
+import OptionsLab from "./exercises/OptionsLab";
+import Replay from "./exercises/Replay";
 import TapCandle from "./exercises/TapCandle";
 import TapSwings from "./exercises/TapSwings";
 import Teach from "./exercises/Teach";
@@ -97,6 +99,8 @@ export default function LessonPlayer({ lesson }: { lesson: Lesson }) {
       {ex.type === "classify" && <Classify key={ex.id} ex={ex} onAnswer={onAnswer} onNext={next} />}
       {ex.type === "tap-swings" && <TapSwings key={ex.id} ex={ex} onAnswer={onAnswer} onNext={next} />}
       {ex.type === "tap-candle" && <TapCandle key={ex.id} ex={ex} onAnswer={onAnswer} onNext={next} />}
+      {ex.type === "replay" && <Replay key={ex.id} ex={ex} onAnswer={onAnswer} onNext={next} />}
+      {ex.type === "options-lab" && <OptionsLab key={ex.id} ex={ex} onAnswer={onAnswer} onNext={next} />}
     </div>
   );
 }

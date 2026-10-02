@@ -11,6 +11,7 @@ import {
   createSeriesMarkers,
   type IChartApi,
   type ISeriesApi,
+  type IPriceLine,
   type ISeriesMarkersPluginApi,
   type SeriesMarker,
   type Time,
@@ -44,6 +45,7 @@ export default function Candles({ candles, levels, markers, onTap, height = 260 
     if (!el) return;
 
     const chart = createChart(el, {
+      width: el.clientWidth,
       height,
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
@@ -67,18 +69,6 @@ export default function Candles({ candles, levels, markers, onTap, height = 260 
       lastValueVisible: false,
       priceLineVisible: false,
     });
-    series.setData(candles.map((c) => ({ ...c, time: c.time as UTCTimestamp })));
-    for (const lv of levels ?? []) {
-      series.createPriceLine({
-        price: lv.price,
-        color: lv.color ?? "#eab308",
-        lineWidth: 2,
-        title: lv.label,
-        axisLabelVisible: true,
-      });
-    }
-    chart.timeScale().fitContent();
-
     const ro = new ResizeObserver(() => chart.applyOptions({ width: el.clientWidth }));
     ro.observe(el);
 
@@ -93,7 +83,28 @@ export default function Candles({ candles, levels, markers, onTap, height = 260 
       seriesRef.current = null;
       markersRef.current = null;
     };
-  }, [candles, levels, height]);
+  }, [height]);
+
+  // Data and levels update in place; recreating the chart per bar (the replay
+  // drill adds one every 120ms) is slow and flickers.
+  const linesRef = useRef<IPriceLine[]>([]);
+  useEffect(() => {
+    const series = seriesRef.current;
+    const chart = chartRef.current;
+    if (!series || !chart) return;
+    series.setData(candles.map((c) => ({ ...c, time: c.time as UTCTimestamp })));
+    for (const line of linesRef.current) series.removePriceLine(line);
+    linesRef.current = (levels ?? []).map((lv) =>
+      series.createPriceLine({
+        price: lv.price,
+        color: lv.color ?? "#eab308",
+        lineWidth: 2,
+        title: lv.label,
+        axisLabelVisible: true,
+      }),
+    );
+    chart.timeScale().fitContent();
+  }, [candles, levels]);
 
   useEffect(() => {
     const plugin = markersRef.current;

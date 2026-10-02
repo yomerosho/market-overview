@@ -18,6 +18,9 @@ const LABELS: Record<string, string> = {
   risk: "Risk",
   news: "News",
   process: "Process & discipline",
+  "options-basics": "Calls & puts",
+  "strikes-expiry": "Strikes & expiry",
+  greeks: "Greeks",
 };
 
 export default function Profile() {

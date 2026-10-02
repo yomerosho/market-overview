@@ -34,7 +34,10 @@ export type ConceptTag =
   | "targets"
   | "risk"
   | "news"
-  | "process";
+  | "process"
+  | "options-basics"
+  | "strikes-expiry"
+  | "greeks";
 
 type Base = { id: string; tag: ConceptTag };
 
@@ -83,8 +86,38 @@ export type TapCandleExercise = Base & {
   explain: string;
 };
 
+/**
+ * Chart replay: the student sees the first `reveal` bars, decides long /
+ * short / skip, then watches the rest play out. The right call follows the
+ * structure: bull → long, bear → short, range → skip.
+ */
+export type ReplayExercise = Base & {
+  type: "replay";
+  prompt: string;
+  chart: ChartSpec;
+  reveal: number;
+  explain: string;
+};
+
+export type LabGoal =
+  | { metric: "delta"; min: number; max: number }
+  | { metric: "moneyness"; value: "itm" | "otm" }
+  | { metric: "dte"; max: number }
+  | { metric: "premium"; max: number };
+
+/** Interactive options pricer with a goal the student has to hit. */
+export type OptionsLabExercise = Base & {
+  type: "options-lab";
+  prompt: string;
+  side: "call" | "put";
+  goal: LabGoal;
+  explain: string;
+};
+
 export type Exercise =
   | TeachExercise
+  | ReplayExercise
+  | OptionsLabExercise
   | ChoiceExercise
   | ClassifyExercise
   | TapSwingsExercise

@@ -719,6 +719,302 @@ const l4_2: Lesson = {
   ],
 };
 
+
+const l4_3: Lesson = {
+  id: "s4-replay",
+  title: "Chart replay: make the call",
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "process",
+      title: "Decide at the right edge",
+      body: [
+        "This is the drill that matters. You'll see a chart up to the right edge, where a real trader has to decide with nothing to the right of it.",
+        "Name the structure. Bull trend: look for a long. Bear trend: look for a short. No clear trend: skip. Skipping is a trade decision too, and it earns the same XP.",
+        "Then watch what happens. Judge yourself on the decision, not on the outcome.",
+      ],
+    },
+    {
+      id: "r1",
+      type: "replay",
+      tag: "trend",
+      prompt: "Long, short, or skip?",
+      chart: { seed: 2001, structure: "bull", bars: 60 },
+      reveal: 40,
+      explain: "Higher highs and higher lows into the right edge. With the trend means long.",
+    },
+    {
+      id: "r2",
+      type: "replay",
+      tag: "trend",
+      prompt: "Long, short, or skip?",
+      chart: { seed: 2002, structure: "range", bars: 60 },
+      reveal: 40,
+      explain: "No trend. You don't trade what you can't name. Skipping was the right call.",
+    },
+    {
+      id: "r3",
+      type: "replay",
+      tag: "trend",
+      prompt: "Long, short, or skip?",
+      chart: { seed: 2003, structure: "bear", bars: 60 },
+      reveal: 40,
+      explain: "Lower highs, lower lows. Short with the trend.",
+    },
+    {
+      id: "r4",
+      type: "replay",
+      tag: "process",
+      prompt: "Long, short, or skip?",
+      chart: { seed: 2004, structure: "bull", bars: 60 },
+      reveal: 40,
+      explain: "Bull trend. Never trade against it, and never skip a clean continuation out of fear.",
+    },
+  ],
+};
+
+// ---------- Stage 5: Options mechanics ----------
+
+const l5_1: Lesson = {
+  id: "s5-calls-puts",
+  title: "Calls and puts",
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "options-basics",
+      title: "A contract, not a share",
+      body: [
+        "An option is a contract. A call gives you the right to buy 100 shares at a set price (the strike) before a set date (the expiry). A put gives you the right to sell.",
+        "You pay a premium for that right. If you're wrong, the most you can lose as a buyer is the premium. That's the whole appeal, and the whole trap: the premium goes to zero if nothing happens.",
+        "Bullish on a chart? Buy a call. Bearish? Buy a put. The chart reading you've already learned decides which.",
+      ],
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "options-basics",
+      prompt: "You read a clean bull trend and want to trade it with an option. You buy:",
+      choices: ["A call", "A put", "Both", "Neither, options are only for bear trends"],
+      answer: 0,
+      explain: "A call makes money when the stock goes up.",
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "options-basics",
+      prompt: "You buy a call for $2.00 per share. The stock drops hard and never recovers. What's your maximum loss?",
+      choices: ["Unlimited", "$2.00 per share ($200 per contract)", "The stock price", "Nothing"],
+      answer: 1,
+      explain: "A buyer can only lose the premium. One contract is 100 shares, so $2.00 x 100 = $200.",
+    },
+    {
+      id: "q3",
+      type: "choice",
+      tag: "options-basics",
+      prompt: "A put gives you the right to:",
+      choices: ["Buy shares at the strike", "Sell shares at the strike", "Receive dividends", "Vote at shareholder meetings"],
+      answer: 1,
+      explain: "Put = right to sell. It gains value when the stock falls.",
+    },
+  ],
+};
+
+const l5_2: Lesson = {
+  id: "s5-strikes",
+  title: "Strikes and expiry",
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "strikes-expiry",
+      title: "In the money, out of the money",
+      body: [
+        "A call is in the money (ITM) when the stock is above the strike: it already has real value. Out of the money (OTM) means the stock is below the strike: all of the premium is hope.",
+        "For a put it's reversed: ITM when the stock is below the strike.",
+        "Further OTM is cheaper and pays off bigger if you're right, but it's wrong far more often. Closer to the money costs more and behaves more like stock.",
+        "In the lab below, drag the strike and watch the premium and the P&L curve change.",
+      ],
+    },
+    {
+      id: "lab1",
+      type: "options-lab",
+      tag: "strikes-expiry",
+      prompt: "Set up an out-of-the-money call.",
+      side: "call",
+      goal: { metric: "moneyness", value: "otm" },
+      explain: "The stock is at $100, so any call with a strike above $100 is OTM.",
+    },
+    {
+      id: "lab2",
+      type: "options-lab",
+      tag: "strikes-expiry",
+      prompt: "Set up an in-the-money put.",
+      side: "put",
+      goal: { metric: "moneyness", value: "itm" },
+      explain: "A put is ITM when the stock is below the strike, so the strike must be above $100.",
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "strikes-expiry",
+      prompt: "The stock is at $100. Which call is cheapest?",
+      choices: ["$90 strike", "$100 strike", "$110 strike"],
+      answer: 2,
+      explain: "The $110 call is furthest OTM. The stock has to climb 10% before it's worth anything at expiry.",
+    },
+  ],
+};
+
+const l5_3: Lesson = {
+  id: "s5-theta",
+  title: "Time decay",
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "greeks",
+      title: "Theta: the price of waiting",
+      body: [
+        "Every day that passes, an option loses a little value even if the stock doesn't move. That daily loss is theta.",
+        "Theta isn't steady. It's small with 60 days left and brutal in the last few days. A 0DTE option is almost pure theta: it melts by the hour.",
+        "That's why swing trades use expiries weeks out, and why 0DTE is the last stage of this course, not the first.",
+      ],
+    },
+    {
+      id: "lab1",
+      type: "options-lab",
+      tag: "greeks",
+      prompt: "Drag days-to-expiry down and watch theta. Then set up a call with 7 days or less left.",
+      side: "call",
+      goal: { metric: "dte", max: 7 },
+      explain: "Notice how theta per day grows as expiry gets close. That's the cost of holding short-dated options.",
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "greeks",
+      prompt: "You buy a call with 3 days to expiry. The stock goes nowhere for 3 days. Your option:",
+      choices: ["Keeps its value", "Loses most or all of its value", "Gains value", "Converts to shares"],
+      answer: 1,
+      explain: "No move plus fast theta means the premium melts. Short-dated options need the move to happen now.",
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "greeks",
+      prompt: "Which expiry loses value fastest per day from time alone?",
+      choices: ["90 days out", "30 days out", "2 days out"],
+      answer: 2,
+      explain: "Theta accelerates into expiry.",
+    },
+  ],
+};
+
+const l5_4: Lesson = {
+  id: "s5-delta",
+  title: "Delta",
+  exercises: [
+    {
+      id: "t1",
+      type: "teach",
+      tag: "greeks",
+      title: "Delta: how much the option moves",
+      body: [
+        "Delta tells you how much the option's price changes when the stock moves $1. A 0.50-delta call gains about $0.50 when the stock rises $1.",
+        "It's also a rough probability of finishing in the money. A 0.20-delta option is a long shot. A 0.70-delta option behaves a lot like owning the stock.",
+        "Many swing traders live around 0.40 to 0.60 delta: enough move to matter, not so far OTM that it needs a miracle.",
+      ],
+    },
+    {
+      id: "lab1",
+      type: "options-lab",
+      tag: "greeks",
+      prompt: "Set up a call with a delta between 0.40 and 0.60.",
+      side: "call",
+      goal: { metric: "delta", min: 0.4, max: 0.6 },
+      explain: "Near-the-money calls sit around 0.50 delta. Move the strike away from $100 and watch delta fall.",
+    },
+    {
+      id: "lab2",
+      type: "options-lab",
+      tag: "greeks",
+      prompt: "Set up a cheap, low-probability put: delta no bigger than 0.20.",
+      side: "put",
+      goal: { metric: "delta", min: 0, max: 0.2 },
+      explain: "Far OTM puts have small delta. Cheap, but they need a big drop to pay.",
+    },
+    {
+      id: "q1",
+      type: "choice",
+      tag: "greeks",
+      prompt: "A 0.30-delta call costs $1.00. The stock rises $1. Roughly what is the call worth now?",
+      choices: ["$1.00", "$1.30", "$2.00", "$0.70"],
+      answer: 1,
+      explain: "Delta 0.30 means about $0.30 of gain per $1 of stock move.",
+    },
+  ],
+};
+
+const l5_5: Lesson = {
+  id: "s5-checkpoint",
+  title: "Checkpoint: Options mechanics",
+  checkpoint: true,
+  exercises: [
+    {
+      id: "q1",
+      type: "choice",
+      tag: "options-basics",
+      prompt: "You read a bear trend on the daily chart. The option trade that matches is:",
+      choices: ["Buy a call", "Buy a put", "Skip, options can't trade down moves"],
+      answer: 1,
+      explain: "Bearish read, buy a put.",
+    },
+    {
+      id: "lab1",
+      type: "options-lab",
+      tag: "strikes-expiry",
+      prompt: "Set up a swing-style call: delta between 0.40 and 0.60, with at least a few weeks on it.",
+      side: "call",
+      goal: { metric: "delta", min: 0.4, max: 0.6 },
+      explain: "Near the money, weeks out. That's the swing shape.",
+    },
+    {
+      id: "q2",
+      type: "choice",
+      tag: "greeks",
+      prompt: "Why is 0DTE harder than swing trading?",
+      choices: [
+        "The premiums are bigger",
+        "Theta is extreme, so you need the move to happen within hours",
+        "You can't use charts",
+        "It isn't, it's just faster",
+      ],
+      answer: 1,
+      explain: "Time decay is the enemy. On a 0DTE, being right eventually is the same as being wrong.",
+    },
+    {
+      id: "q3",
+      type: "choice",
+      tag: "options-basics",
+      prompt: "You paid $3.00 for a put. The stock rips higher. Your loss is at most:",
+      choices: ["$300 per contract", "Unlimited", "$3 per contract", "The full stock price"],
+      answer: 0,
+      explain: "Premium x 100 shares. That's the cap for an option buyer.",
+    },
+    {
+      id: "lab2",
+      type: "options-lab",
+      tag: "strikes-expiry",
+      prompt: "Make this call cost $1.00 or less per share.",
+      side: "call",
+      goal: { metric: "premium", max: 1 },
+      explain: "Cheaper means further OTM, fewer days, or both. Cheap is not the same as good.",
+    },
+  ],
+};
+
 export const STAGES: Stage[] = [
   {
     id: "stage-1",
@@ -746,14 +1042,14 @@ export const STAGES: Stage[] = [
     number: 4,
     title: "Trade planning",
     blurb: "Targets, locking in profit, news, and the no-rush rule.",
-    units: [{ id: "u4", title: "The plan", lessons: [l4_1, l4_2] }],
+    units: [{ id: "u4", title: "The plan", lessons: [l4_1, l4_2, l4_3] }],
   },
   {
     id: "stage-5",
     number: 5,
     title: "Options mechanics",
     blurb: "Calls, puts, strikes, expiries, and the greeks.",
-    units: [],
+    units: [{ id: "u5", title: "Mechanics", lessons: [l5_1, l5_2, l5_3, l5_4, l5_5] }],
     premium: true,
   },
   {
