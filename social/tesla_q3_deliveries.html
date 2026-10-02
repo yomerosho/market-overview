@@ -1,0 +1,47 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1080px;height:1350px;background:#0a0a0c;color:#f5f5f7;font-family:Inter,sans-serif;overflow:hidden;position:relative}
+.glow{position:absolute;width:1100px;height:1100px;border-radius:50%;background:radial-gradient(circle,rgba(232,33,39,.35),transparent 65%);top:-380px;right:-420px}
+.glow2{position:absolute;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(34,197,94,.14),transparent 65%);bottom:-420px;left:-300px}
+.wrap{position:relative;padding:80px 84px;height:100%;display:flex;flex-direction:column}
+.top{display:flex;justify-content:space-between;align-items:center}
+.tick{font-family:'DejaVu Sans Mono',monospace;font-weight:700;font-size:34px;letter-spacing:2px;background:#e82127;padding:10px 22px;border-radius:10px}
+.q{font-family:'DejaVu Sans Mono',monospace;font-weight:500;font-size:28px;color:#a1a1aa;letter-spacing:3px}
+.kicker{margin-top:70px;font-weight:900;font-size:74px;line-height:1.02;letter-spacing:-2px;text-transform:uppercase}
+.kicker span{color:#e82127}
+.emoji{font-family:'Noto Color Emoji';font-size:66px}
+.label{margin-top:64px;font-size:30px;font-weight:600;color:#a1a1aa;letter-spacing:4px;text-transform:uppercase}
+.big{font-weight:900;font-size:188px;letter-spacing:-7px;line-height:1;margin-top:8px}
+.sub{font-size:34px;color:#d4d4d8;font-weight:600;margin-top:6px}
+.bars{margin-top:58px;display:flex;flex-direction:column;gap:26px}
+.row .meta{display:flex;justify-content:space-between;font-size:28px;font-weight:600;margin-bottom:10px}
+.row .meta .v{font-family:'DejaVu Sans Mono',monospace}
+.track{height:34px;background:#1c1c21;border-radius:8px;overflow:hidden}
+.fill{height:100%;border-radius:8px}
+.act{width:100%;background:linear-gradient(90deg,#b5161b,#ff3b40)}
+.con{width:94.95%;background:#52525b}
+.beat{margin-top:auto;display:flex;gap:22px}
+.pill{flex:1;background:rgba(34,197,94,.12);border:2px solid rgba(34,197,94,.55);border-radius:20px;padding:26px 30px}
+.pill .k{font-size:24px;color:#86efac;font-weight:600;letter-spacing:3px;text-transform:uppercase}
+.pill .n{font-size:64px;font-weight:900;color:#22c55e;letter-spacing:-2px;margin-top:4px}
+.foot{margin-top:34px;font-size:22px;color:#71717a;display:flex;justify-content:space-between}
+</style></head><body>
+<div class="glow"></div><div class="glow2"></div>
+<div class="wrap">
+  <div class="top"><div class="tick">$TSLA</div><div class="q">Q3 2026 DELIVERIES</div></div>
+  <div class="kicker">The return of<br><span>Tesla Fridays</span> <span class="emoji">🔥🚀</span></div>
+  <div class="label">Vehicles delivered</div>
+  <div class="big">486,532</div>
+  <div class="sub">vs. consensus of 461,974</div>
+  <div class="bars">
+    <div class="row"><div class="meta"><span>Actual</span><span class="v">486,532</span></div><div class="track"><div class="fill act"></div></div></div>
+    <div class="row"><div class="meta"><span style="color:#a1a1aa">Consensus</span><span class="v" style="color:#a1a1aa">461,974</span></div><div class="track"><div class="fill con"></div></div></div>
+  </div>
+  <div class="beat">
+    <div class="pill"><div class="k">Beat by</div><div class="n">+24,558</div></div>
+    <div class="pill"><div class="k">Vs. estimates</div><div class="n">+5.3%</div></div>
+  </div>
+  <div class="foot"><span>Source: Tesla Q3 production &amp; deliveries report</span><span>Not financial advice</span></div>
+</div></body></html>
