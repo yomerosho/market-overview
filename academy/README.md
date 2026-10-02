@@ -4,7 +4,7 @@ A Duolingo-style course that teaches a complete beginner to read charts,
 candles and market structure, and later to place swing option trades and
 trade 0DTEs. Mobile-first, installable as a PWA, works on desktop too.
 
-A **four-week, day-by-day programme** (~15 minutes a day): week 1 reading
+A **four-week, day-by-day programme** (about 1.5 hours a week, ~15 minutes a day): week 1 reading
 the market, week 2 trade planning and options mechanics, week 3 the 0DTE
 method, week 4 the swing-options setup library. Every day mixes a taught
 lesson with generated practice, and most days end with a review that leans

@@ -1990,7 +1990,7 @@ export const STAGES: Stage[] = [
     id: "week-1",
     number: 1,
     title: "Week 1 · Reading the market",
-    blurb: "Charts, candles, trends, levels. About 15 minutes a day.",
+    blurb: "Charts, candles, trends, levels. About 1.5 hours this week, ~15 minutes a day.",
     units: [
       day(1, "What a chart is", [l1_1, l1_2, practice("d1-practice", "Practice: axes & timeframes", ["axes", "timeframes"], 6)]),
       day(2, "Candles", [l2_1, l2_2, practice("d2-practice", "Practice: candles", ["candle-anatomy", "candle-patterns"], 8)]),
@@ -2005,7 +2005,7 @@ export const STAGES: Stage[] = [
     id: "week-2",
     number: 2,
     title: "Week 2 · Planning the trade & options",
-    blurb: "Targets, discipline, the replay drill, then calls, puts and greeks.",
+    blurb: "Targets, discipline, the replay drill, then calls, puts and greeks. About 1.5 hours.",
     units: [
       day(8, "The plan", [l4_1, l4_2, practice("d8-practice", "Practice: targets & process", ["targets", "process", "risk"], 8)]),
       day(9, "Replay", [l4_3, practice("d9-practice", "Practice: make the call", ["process", "trend"], 8), review("d9-review", "Review: structure", ["trend", "support-resistance", "retest", "trendlines", "targets"], 6)]),
@@ -2021,7 +2021,7 @@ export const STAGES: Stage[] = [
     id: "week-3",
     number: 3,
     title: "Week 3 · The 0DTE method",
-    blurb: "The morning routine, bias and FTFC, the day's levels, the ORB box, the clock.",
+    blurb: "The morning routine, bias and FTFC, the day's levels, the ORB box, the clock. About 1.5 hours.",
     units: [
       day(15, "The routine", [l7_1, practice("d15-practice", "Practice: routine & FTFC", ["routine"], 8), review("d15-review", "Review: the basics", ["trend", "support-resistance", "timeframes"], 6)]),
       day(16, "Bias", [l7_2, practice("d16-practice", "Practice: read the bias", ["bias", "routine"], 8)]),
@@ -2037,7 +2037,7 @@ export const STAGES: Stage[] = [
     id: "week-4",
     number: 4,
     title: "Week 4 · Swing options",
-    blurb: "The daily-chart setup library: regime, the eight setups, invalidation, and the 7–21 DTE contract.",
+    blurb: "The daily-chart setup library: regime, the eight setups, invalidation, and the 7–21 DTE contract. About 2 hours.",
     units: [
       day(22, "The swing mindset", [l6_1, practice("d22-practice", "Practice: principles", ["swing-setups", "swing-options"], 6)]),
       day(23, "Regime", [l6_2, practice("d23-practice", "Practice: name the regime", ["regime"], 8), review("d23-review", "Review: structure & MAs", ["trend", "bias", "support-resistance"], 6)]),
