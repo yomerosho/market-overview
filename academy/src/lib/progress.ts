@@ -1,9 +1,11 @@
 "use client";
 
-// Per-user progress. The prototype keeps it in localStorage; the MVP moves
-// this exact shape to a database row per user so the UI doesn't change.
+// Per-user progress. localStorage is always the working copy; when the
+// student is signed in, the same JSON is mirrored to their profiles row
+// (debounced) and pulled back on sign-in, so it follows them across devices.
 
 import { useCallback, useSyncExternalStore } from "react";
+import { supabase } from "./supabase/client";
 import type { ConceptTag } from "./types";
 
 export const MAX_HEARTS = 5;
@@ -89,6 +91,73 @@ function setStore(next: Progress) {
   cached = next;
   save(next);
   listeners.forEach((l) => l());
+  scheduleRemoteSave(next);
+}
+
+// ---------- remote mirror ----------
+
+let remoteUserId: string | null = null;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleRemoteSave(p: Progress) {
+  const sb = supabase();
+  if (!sb || !remoteUserId) return;
+  if (saveTimer) clearTimeout(saveTimer);
+  const uid = remoteUserId;
+  saveTimer = setTimeout(() => {
+    sb.from("profiles").upsert({ user_id: uid, progress: p }).then(({ error }) => {
+      if (error) console.warn("progress sync failed", error.message);
+    });
+  }, 1500);
+}
+
+/**
+ * Merge two copies of progress. XP and streak take the larger; lessons and
+ * mastery are combined so nothing a student did on either device is lost.
+ */
+export function mergeProgress(a: Progress, b: Progress): Progress {
+  const lessons = { ...a.lessons };
+  for (const [id, r] of Object.entries(b.lessons)) {
+    const cur = lessons[id];
+    lessons[id] = cur
+      ? { score: Math.max(cur.score, r.score), passed: cur.passed || r.passed, completedAt: Math.max(cur.completedAt, r.completedAt) }
+      : r;
+  }
+  const mastery: Progress["mastery"] = { ...a.mastery };
+  for (const [tag, m] of Object.entries(b.mastery) as [ConceptTag, { correct: number; attempted: number }][]) {
+    const cur = mastery[tag];
+    mastery[tag] = cur ? { correct: cur.correct + m.correct, attempted: cur.attempted + m.attempted } : m;
+  }
+  const newer = a.heartsUpdatedAt >= b.heartsUpdatedAt ? a : b;
+  return {
+    xp: Math.max(a.xp, b.xp),
+    hearts: newer.hearts,
+    heartsUpdatedAt: newer.heartsUpdatedAt,
+    streak: Math.max(a.streak, b.streak),
+    lastActiveDay: [a.lastActiveDay, b.lastActiveDay].filter(Boolean).sort().pop() ?? null,
+    lessons,
+    mastery,
+  };
+}
+
+/** Called on sign-in: pull the remote copy, merge with local, push the result. */
+export async function attachRemote(userId: string) {
+  const sb = supabase();
+  if (!sb) return;
+  remoteUserId = userId;
+  const { data } = await sb.from("profiles").select("progress").eq("user_id", userId).maybeSingle();
+  const remote = data?.progress && Object.keys(data.progress).length ? ({ ...fresh(), ...(data.progress as Progress) } as Progress) : null;
+  const merged = remote ? mergeProgress(getSnapshot(), remote) : getSnapshot();
+  cached = withRefilledHearts(merged);
+  save(cached);
+  listeners.forEach((l) => l());
+  await sb.from("profiles").upsert({ user_id: userId, progress: cached });
+}
+
+/** Called on sign-out: stop mirroring. Local progress stays on this device. */
+export function detachRemote() {
+  remoteUserId = null;
+  if (saveTimer) clearTimeout(saveTimer);
 }
 
 export function useProgress() {

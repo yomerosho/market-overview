@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useProgress } from "@/lib/progress";
+import { signOut, useAuth } from "@/lib/supabase/auth";
 import { ALL_LESSONS } from "@/content/stages";
 
 const LABELS: Record<string, string> = {
@@ -34,6 +35,7 @@ const LABELS: Record<string, string> = {
 
 export default function Profile() {
   const { progress, reset } = useProgress();
+  const auth = useAuth();
   if (!progress) return null;
   const passed = ALL_LESSONS.filter((l) => progress.lessons[l.id]?.passed).length;
   const mastery = Object.entries(progress.mastery).sort(([a], [b]) => a.localeCompare(b));
@@ -46,6 +48,29 @@ export default function Profile() {
           ← Path
         </Link>
       </div>
+
+      {auth.ready && auth.configured && (
+        <div className="flex items-center justify-between rounded-xl bg-zinc-900 px-4 py-3 text-sm">
+          {auth.userId ? (
+            <>
+              <div>
+                <div className="font-semibold">{auth.email}</div>
+                <div className="text-xs text-zinc-400">{auth.plan === "premium" ? "Premium" : "Free plan"} · progress synced</div>
+              </div>
+              <button onClick={() => signOut()} className="text-zinc-400">
+                Sign out
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="text-zinc-300">Not signed in</span>
+              <Link href="/login" className="font-bold text-amber-300">
+                Sign in
+              </Link>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-3 text-center">
         <Stat label="XP" value={progress.xp} />

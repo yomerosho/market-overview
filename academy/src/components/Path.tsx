@@ -6,9 +6,11 @@ import Link from "next/link";
 import { Hearts } from "./LessonPlayer";
 import { STAGES, isLessonUnlocked } from "@/content/stages";
 import { useProgress } from "@/lib/progress";
+import { useAuth } from "@/lib/supabase/auth";
 
 export default function Path() {
   const { progress } = useProgress();
+  const auth = useAuth();
   if (!progress) return null;
 
   return (
@@ -24,6 +26,16 @@ export default function Path() {
           </Link>
         </div>
       </header>
+
+      {auth.ready && auth.configured && !auth.userId && (
+        <Link
+          href="/login"
+          className="mb-4 flex items-center justify-between rounded-xl border border-amber-700 bg-amber-950 px-4 py-3 text-sm"
+        >
+          <span>Progress is only saved on this device.</span>
+          <span className="font-bold text-amber-300">Sign in →</span>
+        </Link>
+      )}
 
       {STAGES.map((stage) => {
         const lessons = stage.units.flatMap((u) => u.lessons);

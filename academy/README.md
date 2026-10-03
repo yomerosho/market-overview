@@ -22,6 +22,28 @@ npm run dev        # http://localhost:3000
 Open it on a phone on the same network, or use your browser's device
 toolbar. "Add to Home Screen" installs it as an app.
 
+## Accounts and saved progress (optional)
+
+Without any setup the app works fully, keeping progress in the browser.
+To let students sign in (6-digit email code, no passwords) and have their
+progress follow them between phone and laptop:
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. In the SQL editor, run [`supabase/schema.sql`](supabase/schema.sql).
+   It creates one `profiles` row per user (progress JSON + a `plan` column
+   the paywall will use), with row-level security so a student can only
+   read and write their own row and can never change their own plan.
+3. In Authentication → Providers, make sure **Email** is on. Under
+   Authentication → Email Templates, the *Magic Link* template must include
+   `{{ .Token }}` so the email carries the 6-digit code.
+4. Copy `.env.example` to `.env.local` and fill in the project URL and anon
+   key from Settings → API. Restart `npm run dev`.
+
+How sync works: localStorage is always the working copy. On sign-in the
+remote copy is pulled and **merged** with local (lessons and mastery
+combined, XP and streak take the larger), then every change is mirrored
+back with a short debounce. Sign-out stops mirroring; local progress stays.
+
 ## How it's put together
 
 | Path | What it is |
@@ -34,7 +56,9 @@ toolbar. "Add to Home Screen" installs it as an app.
 | `src/lib/charts.ts` | `resolveChart(spec)`: one entry point that returns candles, levels, MA overlays and the expected replay answer for either generator. |
 | `src/lib/chart-gen.ts` | Deterministic synthetic OHLC generator. Given a seed and a structure (`bull` / `bear` / `range`) it builds a chart *and* its answer key (swing highs/lows). Same seed, same chart, every time, on every device. |
 | `src/lib/options.ts` | Black-Scholes pricing (zero rates) for the options lab. |
-| `src/lib/progress.ts` | Per-user progress: XP, hearts (refill one per 30 min), streak, lesson results, per-concept mastery. localStorage today; the same shape becomes a DB row per user. |
+| `src/lib/progress.ts` | Per-user progress: XP, hearts (refill one per 30 min), streak, lesson results, per-concept mastery. localStorage as the working copy, mirrored to the user's `profiles` row when signed in. |
+| `src/lib/supabase/` | Browser client (null when unconfigured) and the auth hook: session state, email-code sign-in, and wiring sign-in/out to the progress mirror. |
+| `supabase/schema.sql` | The one table, its RLS policies, and the trigger that keeps `plan` read-only for users. |
 | `src/components/LessonPlayer.tsx` | Runs a lesson: progress bar, hearts, pass/fail (70%, checkpoints 85%), end screens. |
 | `src/components/exercises/` | One component per exercise type. |
 | `src/components/Candles.tsx` | Chart rendering (TradingView Lightweight Charts) with tap-to-mark, swing markers, dashed/solid levels, translucent boxes (the ORB), line overlays (MAs, VWAP) and a volume histogram. |
@@ -59,10 +83,9 @@ toolbar. "Add to Home Screen" installs it as an app.
 
 ## Roadmap
 
-1. **MVP** — Supabase auth + Postgres for progress, review queue driven by the mastery scores (weak concepts come back), replay drill with target and stop placement.
-2. **Paywall** — Stripe subscriptions gating weeks 2–4.
-3. **Protection** — per-user watermark on charts and lesson text, device/session limits, rate limiting, ToS.
-4. **Growth** — discipline leaderboard, trade journal, lesson-authoring admin page, App Store wrapper (Capacitor).
+1. **Paywall** — Stripe subscriptions gating weeks 2–4, writing `profiles.plan` from the webhook.
+2. **Protection** — per-user watermark on charts and lesson text, device/session limits, rate limiting, ToS.
+3. **Growth** — discipline leaderboard, trade journal, lesson-authoring admin page, replay drill with target and stop placement, App Store wrapper (Capacitor).
 
 ## Attribution
 
