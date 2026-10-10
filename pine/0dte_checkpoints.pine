@@ -1,0 +1,168 @@
+// 0DTE Checkpoints
+// Marks CALL / PUT only when every entry checkpoint passes. Built for a 5-minute chart.
+// Type today's GEX levels into the settings each morning.
+//@version=5
+indicator("0DTE Checkpoints", overlay=true, max_labels_count=200)
+
+// ---------- Inputs ----------
+grpL = "Today's levels (update every morning)"
+flipLvl  = input.float(0.0, "Gamma flip", group=grpL)
+callWall = input.float(0.0, "Call wall", group=grpL)
+putWall  = input.float(0.0, "Put wall", group=grpL)
+straddle = input.float(0.0, "0DTE ATM straddle $", group=grpL)
+redWeek  = input.bool(false, "Red on the week", group=grpL)
+
+grpC = "Checks"
+orbMin   = input.int(15, "Opening range (minutes)", group=grpC)
+volLen   = input.int(20, "Volume average (bars)", group=grpC)
+volMult  = input.float(1.2, "Volume must be this many x average", group=grpC)
+vwapBars = input.int(3, "Bars closing on one side of VWAP", group=grpC)
+atrLen   = input.int(5, "ATR trailing stop length", group=grpC)
+atrMult  = input.float(3.5, "ATR trailing stop multiple", group=grpC)
+swingLen = input.int(10, "Reversal arrow lookback (bars)", group=grpC)
+useArrow = input.bool(true, "Require a reversal arrow as the trigger", group=grpC)
+showVwap = input.bool(false, "Plot VWAP", group=grpC)
+
+// ---------- Session clock (New York) ----------
+tz      = "America/New_York"
+barMins = hour(time, tz) * 60 + minute(time, tz)
+dom     = dayofmonth(time, tz)
+dow     = dayofweek(time, tz)
+inRth   = barMins >= 570 and barMins < 960
+firstRth = inRth and (not inRth[1] or dom != dom[1])
+isThuFri = dow == dayofweek.thursday or dow == dayofweek.friday
+isFri    = dow == dayofweek.friday
+
+// ---------- Opening range ----------
+var float orbH = na
+var float orbL = na
+if firstRth
+    orbH := high
+    orbL := low
+else if inRth and barMins < 570 + orbMin
+    orbH := math.max(orbH, high)
+    orbL := math.min(orbL, low)
+orbReady = inRth and barMins >= 570 + orbMin
+
+// ---------- Day type: is the wall close? ----------
+var float px935 = na
+if firstRth
+    px935 := close
+haveLevels = flipLvl > 0 and straddle > 0
+aboveFlip  = px935 > flipLvl
+wallIn     = aboveFlip ? callWall : putWall
+wallClose  = haveLevels and wallIn > 0 and math.abs(wallIn - px935) < straddle
+
+volAvg = ta.sma(volume, volLen)
+bigVol = volume > volAvg * volMult
+
+var bool broke = false
+if firstRth
+    broke := false
+if inRth and wallClose and not broke and bigVol
+    if aboveFlip and (close > callWall or close < flipLvl)
+        broke := true
+    if not aboveFlip and (putWall > 0 and close < putWall or close > flipLvl)
+        broke := true
+dayOK = not wallClose or broke
+
+// ---------- VWAP ----------
+vw = ta.vwap(hlc3)
+holdUp = math.sum(close > vw ? 1 : 0, vwapBars) == vwapBars
+holdDn = math.sum(close < vw ? 1 : 0, vwapBars) == vwapBars
+
+// ---------- ATR trailing stop ----------
+nLoss = atrMult * ta.atr(atrLen)
+var float trail = na
+prevTrail = nz(trail[1], close)
+if close > prevTrail and close[1] > prevTrail
+    trail := math.max(prevTrail, close - nLoss)
+else if close < prevTrail and close[1] < prevTrail
+    trail := math.min(prevTrail, close + nLoss)
+else if close > prevTrail
+    trail := close - nLoss
+else
+    trail := close + nLoss
+atrUp = close > trail
+atrDn = close < trail
+
+// ---------- Reversal arrows ----------
+// Bearish: close below the low of the bar that made the recent high. Bullish: the inverse.
+hiOff = nz(-ta.highestbars(high, swingLen))
+loOff = nz(-ta.lowestbars(low, swingLen))
+lowOfHighBar = low[hiOff]
+highOfLowBar = high[loOff]
+crossUp = ta.crossover(close, highOfLowBar)
+crossDn = ta.crossunder(close, lowOfHighBar)
+bullArrow = loOff > 0 and crossUp
+bearArrow = hiOff > 0 and crossDn
+bullRecent = nz(ta.barssince(bullArrow), 999) <= 2
+bearRecent = nz(ta.barssince(bearArrow), 999) <= 2
+
+// ---------- Room to the next level ----------
+float nextUp = callWall > close ? callWall : na
+if flipLvl > close and (na(nextUp) or flipLvl < nextUp)
+    nextUp := flipLvl
+float nextDn = putWall > 0 and putWall < close ? putWall : na
+if flipLvl > 0 and flipLvl < close and (na(nextDn) or flipLvl > nextDn)
+    nextDn := flipLvl
+roomUp = straddle <= 0 or na(nextUp) or (nextUp - close) >= straddle * 0.5
+roomDn = straddle <= 0 or na(nextDn) or (close - nextDn) >= straddle * 0.5
+
+// ---------- Time window and daily limit ----------
+inWindow = (barMins >= 585 and barMins < 690) or (barMins >= 810 and barMins < (isFri ? 780 : 900))
+var int sigCount = 0
+if firstRth
+    sigCount := 0
+maxSig  = isThuFri ? 1 : 2
+blocked = isThuFri and redWeek
+timeOK  = inWindow and not blocked and sigCount < maxSig
+
+// ---------- Checkpoints ----------
+callAll = dayOK and orbReady and close > orbH and bigVol and holdUp and atrUp and roomUp and timeOK
+putAll  = dayOK and orbReady and close < orbL and bigVol and holdDn and atrDn and roomDn and timeOK
+callTrig = useArrow ? bullRecent : true
+putTrig  = useArrow ? bearRecent : true
+callSig = callAll and callTrig and not (callAll[1] and callTrig[1])
+putSig  = putAll and putTrig and not (putAll[1] and putTrig[1])
+if callSig or putSig
+    sigCount += 1
+
+// ---------- Plots ----------
+plot(inRth and orbReady ? orbH : na, "ORB high", color=color.new(color.gray, 20), style=plot.style_linebr)
+plot(inRth and orbReady ? orbL : na, "ORB low", color=color.new(color.gray, 20), style=plot.style_linebr)
+plot(showVwap ? vw : na, "VWAP", color=color.orange)
+plot(trail, "ATR trailing stop", color=atrUp ? color.new(color.teal, 30) : color.new(color.red, 30), style=plot.style_linebr)
+plot(callWall > 0 ? callWall : na, "Call wall", color=color.purple, style=plot.style_linebr)
+plot(putWall > 0 ? putWall : na, "Put wall", color=color.purple, style=plot.style_linebr)
+plot(flipLvl > 0 ? flipLvl : na, "Gamma flip", color=color.orange, style=plot.style_linebr)
+plotshape(bullArrow, "Bullish reversal arrow", shape.triangleup, location.belowbar, color.new(color.teal, 40), size=size.tiny)
+plotshape(bearArrow, "Bearish reversal arrow", shape.triangledown, location.abovebar, color.new(color.red, 40), size=size.tiny)
+plotshape(callSig, "CALL signal", shape.labelup, location.belowbar, color.teal, text="CALL", textcolor=color.white, size=size.small)
+plotshape(putSig, "PUT signal", shape.labeldown, location.abovebar, color.red, text="PUT", textcolor=color.white, size=size.small)
+alertcondition(callSig, "CALL: all checkpoints passed", "0DTE Checkpoints: CALL, every check passed")
+alertcondition(putSig, "PUT: all checkpoints passed", "0DTE Checkpoints: PUT, every check passed")
+
+// ---------- Checklist table ----------
+var table t = table.new(position.top_right, 3, 10, bgcolor=color.new(color.black, 15), border_width=1, border_color=color.new(color.gray, 70))
+mark(ok) => ok ? "✓" : "✕"
+tint(ok) => ok ? color.lime : color.red
+setRow(r, name, okC, okP) =>
+    table.cell(t, 0, r, name, text_color=color.white, text_size=size.small, text_halign=text.align_left)
+    table.cell(t, 1, r, mark(okC), text_color=tint(okC), text_size=size.small)
+    table.cell(t, 2, r, mark(okP), text_color=tint(okP), text_size=size.small)
+
+if barstate.islast
+    dayTxt = not haveLevels ? "Enter levels" : wallClose ? (broke ? "Wall broke" : "Wall close") : "Room"
+    sizeTxt = blocked ? "0x" : isFri ? "0.25x" : dow == dayofweek.thursday ? "0.5x" : "1x"
+    table.cell(t, 0, 0, dayTxt + " · size " + sizeTxt, text_color=color.white, text_size=size.small, text_halign=text.align_left)
+    table.cell(t, 1, 0, "CALL", text_color=color.white, text_size=size.small)
+    table.cell(t, 2, 0, "PUT", text_color=color.white, text_size=size.small)
+    setRow(1, "Day allows trading", dayOK, dayOK)
+    setRow(2, "Broke opening range", orbReady and close > orbH, orbReady and close < orbL)
+    setRow(3, "Volume above average", bigVol, bigVol)
+    setRow(4, "Holding VWAP side", holdUp, holdDn)
+    setRow(5, "ATR trail agrees", atrUp, atrDn)
+    setRow(6, "Reversal arrow", bullRecent, bearRecent)
+    setRow(7, "Room to next level", roomUp, roomDn)
+    setRow(8, "Time window / limit", timeOK, timeOK)
