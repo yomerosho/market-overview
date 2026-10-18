@@ -52,7 +52,7 @@ IMAGE_LOG = IMAGES / "log.jsonl"
 # Overridable so a renamed or retired model is an env change, not a code change.
 # `python gemini_tools.py models` lists what the key can actually reach.
 TEXT_MODEL = os.environ.get("GEMINI_TEXT_MODEL", "gemini-3.8-flash")
-IMAGE_MODEL = os.environ.get("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image-preview")
+IMAGE_MODEL = os.environ.get("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
 IMAGE_CAP = int(os.environ.get("GEMINI_IMAGE_MONTHLY_CAP", "30"))
 
 NOTES_PROMPT = """Watch this video and write study notes in Markdown.
