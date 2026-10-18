@@ -4,7 +4,10 @@
 
 The user wants these used whenever they ask for an image, notes from a video,
 or a podcast. Setup each session: `pip install -q -r requirements-tools.txt`.
-Needs `GEMINI_API_KEY` (set in the cloud environment, never in the repo or chat).
+The key is a cloud-environment network secret (header `x-goog-api-key` on
+`generativelanguage.googleapis.com`), so `GEMINI_API_KEY` is normally unset here
+and that's expected. "API key not valid" means the secret is missing or misconfigured.
+Never put the key in the repo or chat.
 
 - "Make an image of X" -> `python gemini_tools.py image "<detailed prompt>" [--aspect 16:9] [--ref file]`
 - "Notes from this video" -> `python gemini_tools.py video-notes <youtube url | file> [--focus ...]`

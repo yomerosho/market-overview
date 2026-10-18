@@ -10,7 +10,8 @@ a video, and a source pack for a NotebookLM podcast.
     python gemini_tools.py models          # what this key can call
     python gemini_tools.py usage           # images used this month
 
-Needs GEMINI_API_KEY. Everything lands under media/ so it can be committed.
+Needs the Gemini key: a network secret in the cloud (see _client), or
+GEMINI_API_KEY locally. Everything lands under media/ so it can be committed.
 
 COST GUARD
 ==========
@@ -79,12 +80,14 @@ Do not invent anything that is not in the video. If audio is unclear, say so."""
 
 
 def _client():
-    key = os.environ.get("GEMINI_API_KEY")
-    if not key:
-        sys.exit("GEMINI_API_KEY is not set. Add it in the environment settings and start a new session.")
+    # In the cloud environment the real key is a network secret: the proxy adds
+    # the x-goog-api-key header to requests for generativelanguage.googleapis.com,
+    # and the key itself never enters the session. The SDK still insists on a
+    # key, so it gets a placeholder that the proxy's header takes the place of.
+    # Locally, GEMINI_API_KEY in .env works as usual.
     from google import genai
 
-    return genai.Client(api_key=key)
+    return genai.Client(api_key=os.environ.get("GEMINI_API_KEY") or "set-by-network-secret")
 
 
 def _slug(text: str, limit: int = 50) -> str:
