@@ -234,7 +234,10 @@ Next, in NotebookLM (notebooklm.google.com):
 # --- housekeeping -------------------------------------------------------------
 
 def cmd_models(_args) -> None:
-    for m in _client().models.list():
+    # Keep a reference: the SDK closes its HTTP client when the Client is
+    # garbage-collected, and list() is lazy.
+    client = _client()
+    for m in client.models.list():
         actions = ",".join(getattr(m, "supported_actions", None) or [])
         print(f"{m.name.removeprefix('models/'):45} {actions}")
 
