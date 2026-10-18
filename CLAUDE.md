@@ -10,7 +10,9 @@ and that's expected. "API key not valid" means the secret is missing or misconfi
 Never put the key in the repo or chat.
 
 - "Make an image of X" -> `python gemini_tools.py image "<detailed prompt>" [--aspect 16:9] [--ref file]`
-- "Notes from this video" -> `python gemini_tools.py video-notes <youtube url | file> [--focus ...]`
+- "Notes from this video" -> `python gemini_tools.py video-notes <youtube url | file> [--focus ...] [--title ...]`
+  X/Twitter links can't be fetched (the cloud service blocks X even on Full network
+  access): ask the user to upload the video file, and pass `--title` with its name.
 - "Make a podcast" -> `python gemini_tools.py podcast-pack <notes...> --title ... --focus ...`,
   then walk the user through the NotebookLM steps it prints (no NotebookLM API; the
   free app with their Google AI Pro plan makes the Audio Overview).

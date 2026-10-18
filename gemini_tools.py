@@ -188,14 +188,24 @@ def _video_part(client, source: str):
 
 def cmd_video_notes(args) -> None:
     client = _client()
+    from google.genai import types
+
     prompt = NOTES_PROMPT + (f"\n\nExtra focus from the reader: {args.focus}" if args.focus else "")
+    source = args.title or args.source
+    # Streamed, because the network-secret gateway cuts a request that sends
+    # nothing back for ~40s, and a 20-minute video takes longer than that to
+    # read. Low resolution by default: it roughly quarters the video tokens
+    # (time and cost) and is plenty for talking heads and chart screenshares.
+    config = None if args.detail else types.GenerateContentConfig(
+        media_resolution=types.MediaResolution.MEDIA_RESOLUTION_LOW)
     try:
-        resp = client.models.generate_content(
-            model=TEXT_MODEL, contents=[_video_part(client, args.source), f"Source: {args.source}\n\n{prompt}"])
+        chunks = client.models.generate_content_stream(
+            model=TEXT_MODEL, contents=[_video_part(client, args.source), f"Source: {source}\n\n{prompt}"],
+            config=config)
+        notes = "".join(c.text or "" for c in chunks).strip()
     except Exception as e:
         _hint_on_missing_model(e, TEXT_MODEL)
         raise
-    notes = (resp.text or "").strip()
     if not notes:
         sys.exit("Gemini returned no notes for this video.")
     title = next((l.lstrip("# ").strip() for l in notes.splitlines() if l.startswith("# ")), args.source)
@@ -261,6 +271,8 @@ def main() -> None:
     p = sub.add_parser("video-notes", help="turn a YouTube link or video file into Markdown notes")
     p.add_argument("source")
     p.add_argument("--focus", help="what to pay most attention to")
+    p.add_argument("--title", help="what to call the source in the notes (e.g. for an uploaded file)")
+    p.add_argument("--detail", action="store_true", help="full video resolution, for small on-screen text")
     p.set_defaults(func=cmd_video_notes)
 
     p = sub.add_parser("podcast-pack", help="bundle notes into one NotebookLM source + steering prompt")
