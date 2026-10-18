@@ -1,0 +1,3 @@
+# Only for gemini_tools.py -- kept out of requirements.txt so the Streamlit
+# deploy doesn't install it.
+google-genai>=2.0.0
