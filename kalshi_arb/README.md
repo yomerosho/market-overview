@@ -34,6 +34,13 @@ no depth, so an ask is assumed fillable for at least one contract.
   passes; a "fair market price" resolution doesn't.
 - 1-minute candles, fetched in chunks of 5,000 (the API max). Minutes with no
   candle carry the last ask for up to `--max-fill` minutes (default 5).
+- Markets not already cached at full resolution are screened first: one
+  hourly request covers a market's whole life, and 1-minute bars are fetched
+  only for hours where the legs' `yes_ask` lows (this hour or the previous
+  one) sum below 1 - 0.01 x legs. Each leg pays at least 1c in fees, so no
+  other minute can show net_edge > 0. `events_scanned.csv` says which
+  resolution each event used. Checked against 30 fully cached NFL games: none
+  of 1,836 minutes under $1.00 gross were missed.
 - gross_sum = sum of YES ask closes; taker fee per leg = ceil-to-cent(0.07 *
   P * (1-P)); net_edge = 1 - gross_sum - fees.
 - Responses are cached in `kalshi_arb/.cache/kalshi.sqlite` (gitignored).
