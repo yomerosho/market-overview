@@ -60,7 +60,7 @@ class FetchError(RuntimeError):
 
 
 class Client:
-    def __init__(self, cache_path: Path, refresh_lists: bool = False):
+    def __init__(self, cache_path: Path, refresh_lists: bool = False, offline: bool = False):
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(cache_path)
         self.db.execute(
@@ -69,6 +69,7 @@ class Client:
         self.session = requests.Session()
         self.session.headers["User-Agent"] = "kalshi-arb-historical-scan (read-only research)"
         self.refresh_lists = refresh_lists
+        self.offline = offline
         self.last = 0.0
         self.interval = MIN_INTERVAL  # grows on 429, decays back on success
         self.fetched = 0
@@ -80,9 +81,11 @@ class Client:
         params = {k: v for k, v in params.items() if v is not None}
         key = path + "?" + "&".join(f"{k}={params[k]}" for k in sorted(params))
         row = self.db.execute("SELECT status, body, fetched_at FROM http WHERE key=?", (key,)).fetchone()
-        if row and not (ttl is not None and (self.refresh_lists or time.time() - row[2] > ttl)):
+        if row and (self.offline or not (ttl is not None and (self.refresh_lists or time.time() - row[2] > ttl))):
             self.cached += 1
             return row[0], json.loads(row[1])
+        if self.offline:
+            raise FetchError(f"not cached: {key}")
 
         for attempt in range(12):
             wait = self.interval - (time.time() - self.last)
@@ -103,11 +106,11 @@ class Client:
                         )
                         self.db.commit()
                     self.fetched += 1
-                    self.interval = max(MIN_INTERVAL, self.interval * 0.98)
+                    self.interval = max(MIN_INTERVAL, self.interval * 0.8)
                     return r.status_code, body
                 err = f"HTTP {r.status_code}"
                 if r.status_code == 429:
-                    self.interval = min(5.0, self.interval * 1.5)
+                    self.interval = min(2.0, self.interval * 1.5)
             retry_after = r.headers.get("Retry-After") if isinstance(err, str) else None
             delay = float(retry_after) if retry_after and retry_after.isdigit() else min(120, 2**attempt) + random.random()
             print(f"  retry {attempt + 1} for {path} ({err}); sleeping {delay:.1f}s", file=sys.stderr)
@@ -291,6 +294,7 @@ def main() -> None:
     ap.add_argument("--max-fill", type=int, default=5, help="minutes a leg's last ask may be carried forward")
     ap.add_argument("--tag", default="last90", help="output subfolder name")
     ap.add_argument("--refresh-lists", action="store_true", help="refetch settled-market listings now")
+    ap.add_argument("--offline", action="store_true", help="use only cached responses; uncached events are skipped")
     ap.add_argument("--cache", default=str(HERE / ".cache" / "kalshi.sqlite"))
     args = ap.parse_args()
 
@@ -298,7 +302,7 @@ def main() -> None:
     until = ts(args.until + "T23:59:59Z")
     out_dir = HERE / "out" / args.tag
     out_dir.mkdir(parents=True, exist_ok=True)
-    c = Client(Path(args.cache), args.refresh_lists)
+    c = Client(Path(args.cache), args.refresh_lists, args.offline)
 
     status, cut = c.get("/historical/cutoff", ttl=LIST_TTL)
     cutoff = ts(cut["market_settled_ts"])
@@ -318,7 +322,12 @@ def main() -> None:
     opp_bars, run_rows, skipped, scanned = [], [], [], []
     for series in args.series:
         cat = SERIES.get(series, series)
-        markets = settled_markets(c, series, since, until, cutoff)
+        try:
+            markets = settled_markets(c, series, since, until, cutoff)
+        except FetchError as e:
+            print(f"{series}: listing unavailable ({e}); skipped")
+            skipped.append({"category": cat, "event": "(all)", "reason": f"listing unavailable: {e}"})
+            continue
         events = defaultdict(list)
         for m in markets.values():
             events[m["event_ticker"]].append(m)
@@ -334,7 +343,7 @@ def main() -> None:
             try:
                 leg_bars = [candles(c, m, cutoff) for m in legs]
             except FetchError as e:  # not cached, so a rerun retries just these
-                skipped.append({"category": cat, "event": ev, "reason": f"fetch failed (rerun to retry): {e}"})
+                skipped.append({"category": cat, "event": ev, "reason": f"fetch failed or not cached (rerun to retry): {e}"})
                 continue
             if not all(leg_bars):
                 skipped.append({"category": cat, "event": ev, "reason": "no candles for a leg"})
