@@ -6,3 +6,4 @@ venv/
 .streamlit/secrets.toml
 .DS_Store
 .claude/settings.local.json
+kalshi_arb/.cache/
