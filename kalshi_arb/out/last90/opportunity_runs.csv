@@ -1,0 +1,4 @@
+category,week,event,definition,start_utc,end_utc,minutes,min_gross_sum,max_net_edge,thin_leg_volume_during_run,minutes_with_carried_quote
+NFL,2026-W22,KXNFLGAME-26SEP13DALNYG,net>0,2026-05-28T09:55Z,2026-05-28T09:55Z,1,0.9500,0.0100,0.00,0
+NFL,2026-W38,KXNFLGAME-26SEP27CINPIT,net>0,2026-09-15T18:06Z,2026-09-15T18:06Z,1,0.9500,0.0100,0.00,0
+NFL,2026-W38,KXNFLGAME-26SEP27CINPIT,net>0,2026-09-15T18:08Z,2026-09-15T18:13Z,6,0.9500,0.0100,0.00,5

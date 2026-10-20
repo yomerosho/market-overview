@@ -13,20 +13,21 @@ Last-quote carry-forward cap: 5 min.
 
 | category | events scanned | skipped | bars scanned | bars gross<=0.93 | events gross<=0.93 | bars net>0 | events net>0 | net>0 runs | median run (min) | max run (min) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| NBA | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | - | - |
-| NFL | 94 | 48 | 1132738 | 0 | 0 | 0 | 0 | 0 | - | - |
+| NBA | 67 | 0 | 119506 | 0 | 0 | 0 | 0 | 0 | - | - |
+| NFL | 142 | 0 | 2040468 | 0 | 0 | 8 | 2 | 3 | 1 | 6 |
 
-Of the net>0 bars, 0 relied on at least one leg's ask carried forward from an earlier minute.
+Of the net>0 bars, 5 relied on at least one leg's ask carried forward from an earlier minute.
 
 ## Largest net>0 runs
 
 | event | start (UTC) | minutes | min gross | max net edge | thin-leg volume |
 |---|---|---|---|---|---|
+| KXNFLGAME-26SEP13DALNYG | 2026-05-28T09:55Z | 1 | 0.9500 | 0.0100 | 0.00 |
+| KXNFLGAME-26SEP27CINPIT | 2026-09-15T18:06Z | 1 | 0.9500 | 0.0100 | 0.00 |
+| KXNFLGAME-26SEP27CINPIT | 2026-09-15T18:08Z | 6 | 0.9500 | 0.0100 | 0.00 |
 
 ## Skipped events
 
-- 48 x fetch failed or not cached (rerun to retry)
-- 1 x listing unavailable
 
 ## Method
 
