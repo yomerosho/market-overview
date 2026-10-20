@@ -55,6 +55,10 @@ LIST_TTL = 6 * 3600  # settled-market listings grow; candles of settled markets 
 # --- HTTP + cache ----------------------------------------------------------
 
 
+class FetchError(RuntimeError):
+    pass
+
+
 class Client:
     def __init__(self, cache_path: Path, refresh_lists: bool = False):
         cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -66,6 +70,7 @@ class Client:
         self.session.headers["User-Agent"] = "kalshi-arb-historical-scan (read-only research)"
         self.refresh_lists = refresh_lists
         self.last = 0.0
+        self.interval = MIN_INTERVAL  # grows on 429, decays back on success
         self.fetched = 0
         self.cached = 0
 
@@ -79,8 +84,8 @@ class Client:
             self.cached += 1
             return row[0], json.loads(row[1])
 
-        for attempt in range(8):
-            wait = MIN_INTERVAL - (time.time() - self.last)
+        for attempt in range(12):
+            wait = self.interval - (time.time() - self.last)
             if wait > 0:
                 time.sleep(wait)
             self.last = time.time()
@@ -98,12 +103,16 @@ class Client:
                         )
                         self.db.commit()
                     self.fetched += 1
+                    self.interval = max(MIN_INTERVAL, self.interval * 0.98)
                     return r.status_code, body
                 err = f"HTTP {r.status_code}"
-            delay = min(60, 2**attempt) + random.random()
+                if r.status_code == 429:
+                    self.interval = min(5.0, self.interval * 1.5)
+            retry_after = r.headers.get("Retry-After") if isinstance(err, str) else None
+            delay = float(retry_after) if retry_after and retry_after.isdigit() else min(120, 2**attempt) + random.random()
             print(f"  retry {attempt + 1} for {path} ({err}); sleeping {delay:.1f}s", file=sys.stderr)
             time.sleep(delay)
-        raise RuntimeError(f"giving up on {key}")
+        raise FetchError(f"giving up on {key}")
 
     def paginate(self, path: str, key: str, ttl: float | None, **params):
         cursor = None
@@ -322,7 +331,11 @@ def main() -> None:
             if why:
                 skipped.append({"category": cat, "event": ev, "reason": why})
                 continue
-            leg_bars = [candles(c, m, cutoff) for m in legs]
+            try:
+                leg_bars = [candles(c, m, cutoff) for m in legs]
+            except FetchError as e:  # not cached, so a rerun retries just these
+                skipped.append({"category": cat, "event": ev, "reason": f"fetch failed (rerun to retry): {e}"})
+                continue
             if not all(leg_bars):
                 skipped.append({"category": cat, "event": ev, "reason": "no candles for a leg"})
                 continue
