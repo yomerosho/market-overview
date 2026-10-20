@@ -75,7 +75,7 @@ class Client:
         self.fetched = 0
         self.cached = 0
 
-    def get(self, path: str, ttl: float | None = None, **params) -> tuple[int, dict]:
+    def get(self, path: str, ttl: float | None = None, cache_only: bool = False, **params) -> tuple[int, dict]:
         """GET with cache. ttl=None caches forever; 4xx bodies are cached too so a
         dead ticker isn't retried every run."""
         params = {k: v for k, v in params.items() if v is not None}
@@ -84,7 +84,7 @@ class Client:
         if row and (self.offline or not (ttl is not None and (self.refresh_lists or time.time() - row[2] > ttl))):
             self.cached += 1
             return row[0], json.loads(row[1])
-        if self.offline:
+        if self.offline or cache_only:
             raise FetchError(f"not cached: {key}")
 
         for attempt in range(12):
@@ -211,33 +211,85 @@ def validate_event(legs: list[dict]) -> str | None:
     return None
 
 
-def candles(c: Client, m: dict, cutoff: int) -> list[dict]:
+def fetch_bars(c: Client, m: dict, cutoff: int, lo: int, hi: int, period: int, cache_only: bool = False) -> list[dict]:
+    """Candles for one market over [lo, hi], chunked to the API's 5,000 max.
+    Tries the endpoint matching the market's side of the cutoff first."""
     t, series = m["ticker"], m["ticker"].split("-", 1)[0]
-    start, end = ts(m["open_time"]), ts(m["close_time"])
-    settled = ts(m["settlement_ts"]) if m.get("settlement_ts") else end
+    settled = ts(m["settlement_ts"]) if m.get("settlement_ts") else ts(m["close_time"])
     paths = [f"/historical/markets/{t}/candlesticks", f"/series/{series}/markets/{t}/candlesticks"]
     if settled >= cutoff:
         paths.reverse()
+    step = period * 60
     for path in paths:
         bars: list[dict] = []
         ok = True
-        lo = start - start % 60
-        while lo < end:
-            hi = min(end, lo + (MAX_CANDLES - 1) * 60)
-            status, body = c.get(path, start_ts=lo, end_ts=hi, period_interval=1)
+        a = lo - lo % step
+        while a < hi:
+            b = min(hi, a + (MAX_CANDLES - 1) * step)
+            status, body = c.get(path, cache_only=cache_only, start_ts=a, end_ts=b, period_interval=period)
             if status != 200:
                 ok = False
                 break
             bars.extend(body.get("candlesticks") or [])
-            lo = hi
+            a = b
         if ok and bars:
             seen, uniq = set(), []
-            for b in sorted(bars, key=lambda b: b["end_period_ts"]):
-                if b["end_period_ts"] not in seen and b["end_period_ts"] <= end:
-                    seen.add(b["end_period_ts"])
-                    uniq.append(b)
+            for x in sorted(bars, key=lambda x: x["end_period_ts"]):
+                if x["end_period_ts"] not in seen and lo <= x["end_period_ts"] <= hi:
+                    seen.add(x["end_period_ts"])
+                    uniq.append(x)
             return uniq
     return []
+
+
+def leg_minutes(c: Client, legs: list[dict], cutoff: int) -> tuple[list[list[dict]] | None, str, Fraction | None]:
+    """1-minute candles for every leg. Uses the full market life when it is
+    already cached; otherwise screens with hourly candles and fetches minutes
+    only for hours that could hold an opportunity.
+
+    The screen is exact: a minute can only have net_edge > 0 if its asks sum
+    below 1 - 0.01*legs (every leg pays at least 1c in fees), and each leg's
+    ask in any minute of an hour is >= that hour's yes_ask low. A minute may
+    carry a quote from the previous hour, so each hour is tested against the
+    lower of its own and the previous hour's low."""
+    life = [(ts(m["open_time"]), ts(m["close_time"])) for m in legs]
+    try:
+        full = [fetch_bars(c, m, cutoff, lo, hi, 1, cache_only=True) for m, (lo, hi) in zip(legs, life)]
+        if all(full):
+            return full, "full", None
+    except FetchError:
+        pass
+
+    # the last hour's candle ends after close_time; round up or it's dropped
+    hourly = [fetch_bars(c, m, cutoff, lo, hi + (-hi % 3600), 60) for m, (lo, hi) in zip(legs, life)]
+    if not all(hourly):
+        return None, "screened", None
+    lows = [{x["end_period_ts"]: dollars(x.get("yes_ask"), "low") for x in h} for h in hourly]
+    limit = max(1 - Fraction(len(legs), 100), GROSS_THRESHOLD + Fraction(1, 10**6))
+    flagged, bound = [], None
+    for e in sorted(set().union(*lows)):
+        per_leg = []
+        for lw in lows:
+            vals = [v for v in (lw.get(e), lw.get(e - 3600)) if v]
+            per_leg.append(min(vals) if vals else None)
+        if all(v is not None for v in per_leg):
+            bound = sum(per_leg) if bound is None else min(bound, sum(per_leg))
+            if sum(per_leg) < limit:
+                flagged.append(e)
+    spans: list[list[int]] = []
+    for e in flagged:  # minutes (e-3600, e], plus 10 min before to seed carry-forward
+        a, b = e - 3600 - 600, e
+        if spans and a <= spans[-1][1]:
+            spans[-1][1] = b
+        else:
+            spans.append([a, b])
+    out = []
+    for m, (lo, hi) in zip(legs, life):
+        bars = []
+        for a, b in spans:
+            bars.extend(fetch_bars(c, m, cutoff, max(lo, a), min(hi, b), 1))
+        out.append(bars)
+    return out, "screened", bound
 
 
 # --- the scan ---------------------------------------------------------------
@@ -341,11 +393,11 @@ def main() -> None:
                 skipped.append({"category": cat, "event": ev, "reason": why})
                 continue
             try:
-                leg_bars = [candles(c, m, cutoff) for m in legs]
+                leg_bars, resolution, bound = leg_minutes(c, legs, cutoff)
             except FetchError as e:  # not cached, so a rerun retries just these
                 skipped.append({"category": cat, "event": ev, "reason": f"fetch failed or not cached (rerun to retry): {e}"})
                 continue
-            if not all(leg_bars):
+            if leg_bars is None or (resolution == "full" and not all(leg_bars)):
                 skipped.append({"category": cat, "event": ev, "reason": "no candles for a leg"})
                 continue
             tie = all(Fraction(m["settlement_value_dollars"]) == Fraction(1, 2) for m in legs)
@@ -370,6 +422,7 @@ def main() -> None:
                         hit_n.append(t)
             scanned.append({
                 "category": cat, "event": ev, "week": week_of(ts(legs[0]["close_time"])), "bars": n_bars, "tie": tie,
+                "resolution": resolution, "hourly_min_gross_lower_bound": f(bound),
                 "min_gross_sum": f(min(grosses)) if grosses else "",
                 "median_gross_sum": f(statistics.median(grosses)) if grosses else "",
                 "max_net_edge": f(max(nets)) if nets else "",
