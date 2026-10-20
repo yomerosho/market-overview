@@ -369,7 +369,7 @@ def main() -> None:
                     if net > 0:
                         hit_n.append(t)
             scanned.append({
-                "category": cat, "event": ev, "bars": n_bars, "tie": tie,
+                "category": cat, "event": ev, "week": week_of(ts(legs[0]["close_time"])), "bars": n_bars, "tie": tie,
                 "min_gross_sum": f(min(grosses)) if grosses else "",
                 "median_gross_sum": f(statistics.median(grosses)) if grosses else "",
                 "max_net_edge": f(max(nets)) if nets else "",
@@ -414,6 +414,10 @@ def write_csv(path: Path, rows: list[dict], fields: list[str] | None = None) -> 
 def write_outputs(out_dir, args, cut, fees_seen, scanned, skipped, opp_bars, run_rows) -> None:
     weekly = defaultdict(lambda: {"bars_gross_le_093": 0, "events_gross_le_093": set(),
                                   "bars_net_gt_0": 0, "events_net_gt_0": set(), "thin": []})
+    games = defaultdict(int)
+    for e in scanned:  # every scanned week gets a row, zeros included
+        games[(e["week"], e["category"])] += 1
+        weekly[(e["week"], e["category"])]
     for b in opp_bars:
         w = weekly[(b["week"], b["category"])]
         if b["gross_le_093"]:
@@ -427,7 +431,7 @@ def write_outputs(out_dir, args, cut, fees_seen, scanned, skipped, opp_bars, run
     for (wk, cat), w in sorted(weekly.items()):
         net_runs = [r["minutes"] for r in run_rows if r["week"] == wk and r["category"] == cat and r["definition"] == "net>0"]
         weekly_rows.append({
-            "week": wk, "category": cat,
+            "week": wk, "category": cat, "games_closing_this_week": games[(wk, cat)],
             "event_bars_gross_le_093": w["bars_gross_le_093"],
             "distinct_events_gross_le_093": len(w["events_gross_le_093"]),
             "event_bars_net_edge_gt_0": w["bars_net_gt_0"],

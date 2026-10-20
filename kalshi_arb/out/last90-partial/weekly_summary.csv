@@ -1,1 +1,10 @@
-(none)
+week,category,games_closing_this_week,event_bars_gross_le_093,distinct_events_gross_le_093,event_bars_net_edge_gt_0,distinct_events_net_edge_gt_0,net_gt_0_runs,median_run_minutes,max_run_minutes,median_thin_leg_volume_per_bar
+2026-W32,NFL,1,0,0,0,0,0,,,
+2026-W33,NFL,16,0,0,0,0,0,,,
+2026-W34,NFL,15,0,0,0,0,0,,,
+2026-W35,NFL,17,0,0,0,0,0,,,
+2026-W37,NFL,1,0,0,0,0,0,,,
+2026-W40,NFL,13,0,0,0,0,0,,,
+2026-W41,NFL,15,0,0,0,0,0,,,
+2026-W42,NFL,14,0,0,0,0,0,,,
+2026-W43,NFL,2,0,0,0,0,0,,,
