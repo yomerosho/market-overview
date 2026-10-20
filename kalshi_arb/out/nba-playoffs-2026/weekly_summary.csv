@@ -1,0 +1,10 @@
+week,category,games_closing_this_week,event_bars_gross_le_093,distinct_events_gross_le_093,event_bars_net_edge_gt_0,distinct_events_net_edge_gt_0,net_gt_0_runs,median_run_minutes,max_run_minutes,median_thin_leg_volume_per_bar
+2026-W16,NBA,12,1,1,1,1,1,1,1,130344.0
+2026-W17,NBA,22,0,0,0,0,0,,,
+2026-W18,NBA,17,0,0,1,1,1,1,1,132827.14
+2026-W19,NBA,13,0,0,0,0,0,,,
+2026-W20,NBA,7,0,0,0,0,0,,,
+2026-W21,NBA,6,0,0,0,0,0,,,
+2026-W22,NBA,5,0,0,0,0,0,,,
+2026-W23,NBA,2,0,0,0,0,0,,,
+2026-W24,NBA,3,0,0,0,0,0,,,
